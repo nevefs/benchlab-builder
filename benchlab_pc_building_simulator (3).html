@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BenchLab — PC Building Simulator</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121923;--panel2:#182331;--line:#293849;--text:#e9f1f8;--muted:#91a4b8;--cyan:#58d7e8;--green:#7de0a3;--red:#ff7e86;--amber:#ffd27b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,Segoe UI,Arial;overflow:hidden}button,input,select{font:inherit}button{border:1px solid var(--line);background:#1a2735;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;transition:.15s}button:hover{border-color:var(--cyan);background:#203648}button:disabled{opacity:.4;cursor:not-allowed}button.primary{background:var(--cyan);border-color:var(--cyan);color:#071116;font-weight:750}button.danger{border-color:#633940;color:#ffb1b5}button.active{outline:2px solid var(--cyan)}input,select{background:#0c131b;color:var(--text);border:1px solid var(--line);padding:9px;border-radius:7px;max-width:100%}
+#app{height:100dvh;display:grid;grid-template-rows:58px 1fr 28px}.topbar{display:flex;align-items:center;gap:16px;padding:0 18px;border-bottom:1px solid var(--line);background:#0d131b;z-index:2}.brand{font-weight:900;letter-spacing:1.4px}.brand span{color:var(--cyan)}.topmeta{margin-left:auto;display:flex;gap:12px;align-items:center;color:var(--muted)}.money{color:var(--green);font-weight:800}
+main{display:grid;grid-template-columns:minmax(0,1fr) 350px;min-height:0}.viewport{position:relative;min-width:0;min-height:0;background:radial-gradient(ellipse at 50% 45%,#263847,#101820 60%,#080c11);overflow:hidden}#scene{width:100%;height:100%;display:block;outline:none}.overlay{position:absolute;top:14px;left:14px;display:flex;gap:8px;flex-wrap:wrap;max-width:70%}.pill{border:1px solid #405364;background:#0b121bcc;color:#c7d8e7;padding:6px 10px;border-radius:7px;font-size:12px;backdrop-filter:blur(8px)}.hint{position:absolute;bottom:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:10px;color:#b2c2d1;font-size:12px;pointer-events:none}.hint span{background:#0b121bcc;border:1px solid #2b3a48;border-radius:7px;padding:7px 10px}
+.sidebar{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}.tabs{display:flex;flex-wrap:wrap;padding:9px;gap:5px;border-bottom:1px solid var(--line)}.tabs button{padding:7px 9px;font-size:12px}.content{overflow:auto;padding:15px;flex:1}.section-title{font-size:15px;font-weight:800;margin:0 0 6px}.sub{color:var(--muted);font-size:12px}.row{display:flex;align-items:center;justify-content:space-between;gap:8px}.stack{display:grid;gap:9px}.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px}.card h3{font-size:13px;margin:0 0 4px}.card p{margin:3px 0;color:var(--muted);font-size:12px}.tag{display:inline-block;border:1px solid #3c5366;border-radius:5px;padding:2px 6px;color:#bdd1e0;font-size:10px;margin:2px 3px 0 0}.ok{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--amber)}.meter{height:6px;background:#253342;border-radius:10px;overflow:hidden;margin:7px 0}.meter i{display:block;height:100%;background:var(--cyan)}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1}.statusbar{border-top:1px solid var(--line);display:flex;align-items:center;padding:0 12px;color:var(--muted);font-size:11px;gap:12px}.statusbar #status{color:var(--cyan)}.modalback{position:fixed;inset:0;background:#02060bd9;z-index:10;display:grid;place-items:center;padding:18px}.modal{width:min(720px,100%);max-height:90dvh;overflow:auto;background:#111a24;border:1px solid #344858;border-radius:15px;padding:22px;box-shadow:0 25px 100px #0009}.modal h1{font-size:25px;margin:0 0 5px}.modegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}.mode{padding:15px;text-align:left;min-height:95px}.mode strong{display:block;margin-bottom:5px}.mode small{color:var(--muted)}.notice{padding:10px;border-radius:8px;background:#101a23;border:1px solid var(--line);margin:8px 0}.component{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.component .price{color:var(--green);font-weight:750}.boot-screen{background:#050d18;border-color:#3e7187;color:#c5eaff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.boot-brand{font-size:20px;letter-spacing:3px;color:#71e5f4;font-weight:900;margin-bottom:4px}.boot-sub{font-size:10px;letter-spacing:1.5px;color:#86a9bc;margin-bottom:14px}.boot-option{width:100%;display:flex;align-items:center;gap:9px;text-align:left;margin:6px 0;background:#0b1928;border-color:#28465a;font-family:inherit}.boot-option.active{border-color:#72e5f2;background:#123447;outline:1px solid #72e5f2}.boot-option small{margin-left:auto;color:#91b7c9;font-size:9px}.hidden{display:none!important}
+
+/* Automatic POST and BenchOS setup sequence */
+#bootFlow{position:fixed;inset:0;z-index:40;display:none;place-items:center;background:#03070c;color:#cfe9f5;font:14px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;padding:20px}
+#bootFlow.open{display:grid}.bootflow-panel{width:min(720px,100%);border:1px solid #24495a;background:linear-gradient(145deg,#07131e,#03070c);padding:clamp(18px,4vw,32px);box-shadow:0 25px 100px #000b}.bootflow-title{font-size:clamp(21px,4vw,30px);font-weight:900;letter-spacing:3px;color:#70e5f4}.bootflow-sub{font-size:11px;letter-spacing:2px;color:#769daf;margin-bottom:22px}.bootflow-lines{min-height:155px;white-space:pre-wrap;color:#9fc5d6}.bootflow-line{margin:4px 0}.bootflow-line.done{color:#8be8b0}.bootflow-line.active{color:#f0f8ff}.bootflow-track{height:7px;background:#132431;margin:18px 0 10px;overflow:hidden}.bootflow-track i{display:block;height:100%;width:0;background:#61d9e9;transition:width .35s ease}.bootflow-foot{display:flex;justify-content:space-between;gap:10px;color:#769daf;font-size:11px}
+
+
+/* BenchOS desktop shell */
+#osShell{position:fixed;inset:0;z-index:30;display:none;background:#101820;color:#e8f0f7;font:14px/1.4 Inter,system-ui,Segoe UI,Arial;overflow:hidden;isolation:isolate}
+#osShell.open{display:block}.os-wallpaper{position:absolute;inset:0;background:radial-gradient(ellipse at 18% 18%,#235b72 0,transparent 38%),radial-gradient(ellipse at 82% 76%,#3c326b 0,transparent 43%),linear-gradient(135deg,#101c2b,#0a111b 60%,#14212b)}
+.os-topline{position:absolute;top:0;left:0;right:0;height:32px;padding:0 14px;display:flex;align-items:center;gap:18px;background:#07111bd9;border-bottom:1px solid #ffffff17;font-size:12px;color:#c5d6e2}.os-topline b{letter-spacing:1.5px;color:#80e3ed}.os-topline .right{margin-left:auto}
+.os-icons{position:absolute;top:50px;left:22px;display:grid;gap:8px;width:92px}.os-icon{border:1px solid transparent;background:transparent;border-radius:8px;padding:10px 5px;color:#e7f0f7;display:grid;justify-items:center;gap:6px;font-size:11px;text-shadow:0 1px 4px #000;min-height:76px}.os-icon:hover,.os-icon:focus{background:#ffffff16;border-color:#ffffff35}.os-glyph{font-size:25px;line-height:1.1;text-shadow:none}
+.os-taskbar{position:absolute;bottom:0;left:0;right:0;height:52px;background:#08121be8;border-top:1px solid #ffffff25;display:flex;align-items:center;gap:7px;padding:6px 10px;backdrop-filter:blur(18px)}.os-start{height:38px;min-width:42px;font-size:19px;background:#183345;border-color:#426273}.os-taskapps{display:flex;gap:5px;flex:1;overflow:auto}.os-taskapps button{white-space:nowrap;font-size:12px;padding:8px 10px}.os-clock{min-width:78px;text-align:right;font-size:11px;color:#c3d3df}.os-startmenu{position:absolute;bottom:60px;left:10px;width:min(340px,calc(100vw - 20px));background:#101b27f5;border:1px solid #ffffff2b;border-radius:12px;padding:14px;box-shadow:0 20px 70px #0009;backdrop-filter:blur(20px)}.os-startmenu h3{margin:2px 0 10px;font-size:14px}.os-launchgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.os-launchgrid button{text-align:left;background:#182838;border-color:#2c4356}.os-window{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:min(720px,calc(100vw - 36px));height:min(510px,calc(100dvh - 115px));min-height:220px;display:flex;flex-direction:column;background:#111b26;border:1px solid #4b6576;border-radius:10px;box-shadow:0 22px 70px #0009;overflow:hidden}.os-window.maximized{inset:38px 12px 60px;width:auto;height:auto;transform:none}.os-titlebar{height:42px;flex-shrink:0;background:#192938;display:flex;align-items:center;gap:10px;padding:0 10px;cursor:move;border-bottom:1px solid #344b5d}.os-titlebar strong{font-size:12px;flex:1}.os-window-actions{display:flex;gap:4px}.os-window-actions button{padding:3px 9px;border-radius:5px}.os-window-actions .close{color:#ffb5b5}.os-appbody{padding:14px;overflow:auto;flex:1;background:#101923}.os-appbody h2{font-size:18px;margin:0 0 12px}.os-appbody p{color:#b6c7d4}.os-appbody input,.os-appbody textarea,.os-appbody select{width:100%;background:#0a1119;border:1px solid #33495a;color:#e8f0f7;border-radius:6px;padding:9px}.os-appbody textarea{min-height:210px;resize:vertical}.os-appgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}.os-tile{padding:13px;border:1px solid #2d4354;border-radius:8px;background:#162431}.os-tile b{display:block;margin-bottom:5px}.os-tile small{color:#a9bbc9}.os-terminal{background:#050a0e;color:#9ee7c2;padding:12px;border-radius:7px;font:12px/1.6 ui-monospace,Consolas,monospace;min-height:200px;white-space:pre-wrap}.os-notice{padding:10px;background:#172b39;border:1px solid #304f61;border-radius:7px;margin:8px 0}.os-file{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #263746}.os-file span:last-child{margin-left:auto;color:#9eb2c1;font-size:12px}
+@media(max-width:600px){.os-icons{left:8px;top:42px;grid-template-columns:repeat(2,76px);width:160px}.os-icon{min-height:62px;padding:6px}.os-window{width:calc(100vw - 16px);height:calc(100dvh - 92px);max-height:none}.os-taskbar{gap:4px;padding:5px}.os-taskapps button{padding:7px}.os-topline{gap:8px;padding:0 8px}}
+@media(max-width:850px){body{overflow:auto}#app{height:100dvh;min-height:650px}main{grid-template-columns:1fr;grid-template-rows:minmax(300px,45%) 1fr}.sidebar{border-left:0;border-top:1px solid var(--line)}.content{padding:10px}.topbar{padding:0 10px}.topmeta .hide-small{display:none}.overlay{max-width:90%}.hint{font-size:10px}.modegrid{grid-template-columns:1fr}}
+
+/* BenchOS visual refresh: restrained desktop design, consistent icon system, real window chrome */
+#osShell{background:#0c1119;color:#eef3f8;font-family:Inter,"Segoe UI",system-ui,sans-serif;letter-spacing:0;}
+.os-wallpaper{background:radial-gradient(ellipse at 72% 36%,rgba(49,95,119,.22),transparent 35%),radial-gradient(ellipse at 30% 88%,rgba(42,65,91,.25),transparent 42%),linear-gradient(122deg,#0b111a 0%,#111b28 52%,#0a1018 100%);}
+.os-wallpaper:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.18;background-image:linear-gradient(120deg,transparent 0 49.8%,#7e9db010 50%,transparent 50.2%);background-size:84px 84px;mask-image:linear-gradient(to bottom right,#000,transparent 85%)}
+.os-topline{height:34px;padding:0 20px;gap:20px;background:rgba(9,14,21,.72);border-bottom:1px solid #d9e7f010;backdrop-filter:blur(22px);font-size:12px;color:#a9b8c8;}
+.os-topline b{font-size:11px;letter-spacing:2px;color:#e5edf5;font-weight:750}.os-topline b:before{content:"";display:inline-block;width:7px;height:7px;margin-right:9px;border-radius:2px;background:#77b9d4;box-shadow:0 0 10px #77b9d44d;vertical-align:1px}
+.os-topline #osTopApp{color:#d8e2ec}.os-topline .right{color:#94a8ba;font-variant-numeric:tabular-nums}
+.os-icons{top:56px;left:18px;width:100px;gap:3px;z-index:1}.os-icon{min-height:79px;width:96px;padding:9px 5px;gap:7px;border:1px solid transparent;border-radius:5px;background:transparent;color:#e1eaf2;font-size:11px;text-shadow:0 1px 3px #000a;transition:background .12s,border-color .12s;}
+.os-icon:hover,.os-icon:focus{background:#9eb8cf18;border-color:#9eb8cf30;outline:none}.os-icon:active{background:#9eb8cf27}.os-glyph{width:38px;height:34px;display:grid;place-items:center;line-height:1;text-shadow:none;filter:drop-shadow(0 5px 9px #0004)}.os-glyph svg{width:29px;height:29px;overflow:visible;stroke-width:1.6}.icon-files{color:#8cc8f0}.icon-browser{color:#83c6d8}.icon-settings{color:#c0cbd7}.icon-monitor{color:#85d7bb}.icon-terminal{color:#b5c4d6}.icon-notes{color:#e6d39a}.icon-paint{color:#d2b2e9}.icon-games{color:#e9a7a7}
+.os-taskbar{height:62px;bottom:0;left:0;right:0;justify-content:center;gap:8px;padding:8px 14px;background:rgba(9,14,21,.76);border-top:1px solid #dbe7f00e;backdrop-filter:blur(28px) saturate(125%);}
+.os-start{height:42px;min-width:44px;display:grid;place-items:center;padding:0 12px;border:1px solid #6b879b2c;background:#1b2b3b;color:#d7e7f4;border-radius:8px;font-size:0;box-shadow:0 2px 8px #0002;}
+.os-start:before{content:"";width:17px;height:17px;display:block;background:linear-gradient(90deg,#80c7e8 0 46%,transparent 46% 54%,#80c7e8 54%),linear-gradient(#80c7e8 0 46%,transparent 46% 54%,#80c7e8 54%);background-size:100% 46%,46% 100%;background-position:top,left;background-repeat:no-repeat}
+.os-start:hover{background:#243b4f;border-color:#6488a0}.os-taskapps{flex:0 1 auto;max-width:min(58vw,760px);display:flex;justify-content:center;gap:5px;overflow:auto;scrollbar-width:none}.os-taskapps button{height:42px;display:flex;align-items:center;gap:8px;max-width:170px;white-space:nowrap;font-size:11px;padding:0 11px;border:1px solid transparent;border-radius:7px;background:transparent;color:#c9d6e2}.os-taskapps button:hover{background:#d9e8f014;border-color:#d9e8f012}.os-task-icon{display:grid;place-items:center;width:20px;height:20px;color:#a7d4e9}.os-task-icon svg{width:19px;height:19px}.os-clock{min-width:72px;text-align:center;font-size:11px;line-height:1.45;color:#d2dce6;font-variant-numeric:tabular-nums}.os-taskbar>button:last-child{height:36px;margin-left:2px;padding:0 11px;font-size:11px;border-radius:6px;background:transparent;border-color:#dce8f01c;color:#9eb0c0}
+.os-startmenu{bottom:70px;left:14px;width:min(370px,calc(100vw - 28px));padding:18px;background:rgba(16,24,34,.96);border:1px solid #dce8f020;border-radius:11px;box-shadow:0 24px 80px #0008;backdrop-filter:blur(30px)}.os-startmenu h3{font-size:13px;font-weight:650;color:#cbd7e2;letter-spacing:.2px;margin:0 0 14px}.os-launchgrid{grid-template-columns:1fr 1fr;gap:5px}.os-launchgrid button{min-height:41px;display:flex;align-items:center;text-align:left;background:#ffffff06;border-color:transparent;border-radius:6px;font-size:12px;color:#d5e0ea}.os-launchgrid button:hover{background:#ffffff12;border-color:#ffffff12}
+.os-window{left:50%;top:48%;width:min(780px,calc(100vw - 44px));height:min(540px,calc(100dvh - 126px));background:#f3f6f9;color:#1d2a37;border:1px solid #a6b5c333;border-radius:9px;box-shadow:0 28px 90px #0007,0 3px 12px #0002;overflow:hidden}.os-window.maximized{inset:42px 12px 70px;width:auto;height:auto;transform:none;border-radius:8px}.os-titlebar{height:43px;min-height:43px;background:#e9eef3;color:#263543;padding:0 10px 0 14px;gap:10px;border-bottom:1px solid #d4dde5;cursor:grab}.os-titlebar:active{cursor:grabbing}.os-titlebar strong{font-size:12px;font-weight:650;color:#2c3a47}.os-title-icon{width:19px;height:19px;display:grid;place-items:center;color:#5c93b3}.os-title-icon svg{width:18px;height:18px}.os-window-actions{gap:3px}.os-window-actions button{width:29px;height:26px;padding:0;border:1px solid transparent;border-radius:4px;background:transparent;color:#526271;font-size:14px}.os-window-actions button:hover{background:#d7e0e8}.os-window-actions .close:hover{background:#c74444;color:white;border-color:#c74444}.os-appbody{padding:22px 24px;overflow:auto;flex:1;background:#f7f9fb;color:#243240}.os-appbody h2{font-size:20px;font-weight:650;letter-spacing:-.35px;color:#1d2b38;margin:0 0 7px}.os-appbody p{color:#667584;font-size:12px;line-height:1.65}.os-appbody button{background:#edf2f6;color:#314454;border-color:#d7e0e7;border-radius:5px;font-size:12px}.os-appbody button:hover{background:#e1eaf1;border-color:#b9cbd8}.os-appbody button.primary{background:#286b8a;color:#fff;border-color:#286b8a}.os-appbody input,.os-appbody textarea,.os-appbody select{background:white;color:#23313e;border:1px solid #cbd6df;border-radius:5px;padding:9px}.os-appbody textarea{min-height:210px}.os-appgrid{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px}.os-tile{padding:15px;background:white;border:1px solid #dfe6ec;border-radius:6px;box-shadow:0 1px 2px #1c344008}.os-tile b{font-size:12px;font-weight:650;color:#263847}.os-tile small{color:#738392;font-size:11px}.os-tile p{margin:7px 0}.os-terminal{background:#111a24;color:#b7e8cf;border:1px solid #27394a;border-radius:5px;font:12px/1.7 ui-monospace,Consolas,monospace}.os-notice{padding:11px 13px;background:#eaf2f6;border:1px solid #d8e5ec;border-left:3px solid #78a9c1;border-radius:4px;color:#4a6272;font-size:12px;margin:10px 0}.os-file{padding:10px 4px;border-bottom:1px solid #e2e8ed;color:#314454}.os-file span:last-child{color:#7a8996}.os-appbody .meter{height:5px;background:#e2e9ee;border-radius:2px}.os-appbody .meter i{background:#3985a6}.os-appbody label{color:#516372;font-size:12px}
+@media(max-width:600px){.os-topline{padding:0 11px;gap:10px}.os-icons{left:6px;top:44px;grid-template-columns:repeat(2,76px);width:160px;gap:2px}.os-icon{width:74px;min-height:64px;padding:5px 2px;font-size:10px}.os-glyph{height:28px}.os-glyph svg{width:25px;height:25px}.os-taskbar{height:58px;gap:4px;padding:6px}.os-taskapps{max-width:48vw}.os-taskapps button{padding:0 8px}.os-taskapps button span:last-child{display:none}.os-window{width:calc(100vw - 14px);height:calc(100dvh - 94px);max-height:none;border-radius:8px}.os-appbody{padding:16px}.os-startmenu{bottom:64px;left:7px}}
+
+</style>
+
+<style id="benchos-icon-contrast-fix">
+/* Icon contrast repair: keep every OS icon clearly visible on both dark and light surfaces. */
+#osShell .os-glyph{filter:drop-shadow(0 2px 5px #0005);}
+#osShell .os-glyph svg{stroke:currentColor!important;fill:none!important;stroke-width:1.9!important;}
+#osShell .icon-files{color:#54b8ff!important}
+#osShell .icon-browser{color:#29b8d8!important}
+#osShell .icon-settings{color:#b6a2ff!important}
+#osShell .icon-monitor{color:#28c99a!important}
+#osShell .icon-terminal{color:#83aaff!important}
+#osShell .icon-notes{color:#f2b84b!important}
+#osShell .icon-paint{color:#e49aff!important}
+#osShell .icon-games{color:#ff8294!important}
+#osShell .os-task-icon{color:#65caff!important;background:#2c4c62;border:1px solid #79c9f044;border-radius:5px;}
+#osShell .os-task-icon svg{stroke:currentColor!important;stroke-width:1.9!important;}
+#osShell .os-title-icon{color:#1685b7!important;background:#d9edf7;border:1px solid #b7dce9;border-radius:5px;}
+#osShell .os-title-icon svg{stroke:currentColor!important;stroke-width:1.9!important;}
+#osShell .os-start svg{stroke:#f2f8ff!important;}
+#osShell .os-start{color:#f2f8ff!important;}
+</style>
+
+</head>
+<body>
+<div id="app">
+<header class="topbar"><div class="brand">BENCH<span>LAB</span></div><div class="sub">PC ASSEMBLY WORKSHOP</div><div class="topmeta"><span class="hide-small" id="modeLabel">FREE BUILD</span><span class="money" id="money">$2,500</span><button id="menuBtn">Menu</button></div></header>
+<main><section class="viewport"><canvas id="scene" tabindex="0"></canvas><div class="overlay"><span class="pill" id="stagePill">STAGE 01 · WORKBENCH</span><span class="pill" id="selectionPill">Select a component</span></div><div class="hint"><span>Drag to orbit · Scroll to zoom · Click a part to inspect</span><span id="viewHint">3D INTERACTIVE VIEW</span></div></section>
+<aside class="sidebar"><nav class="tabs"><button data-tab="build" class="active">Assembly</button><button data-tab="shop">Component shop</button><button data-tab="checks">Diagnostics</button><button data-tab="bios">BIOS / OS</button><button data-tab="pc">My PC</button><button data-tab="bench">Benchmarks</button><button data-tab="career">Career</button><button data-tab="settings">Settings</button></nav><div id="content" class="content"></div></aside></main>
+<footer class="statusbar"><span id="status">Ready</span><span>SIMULATION · v1.0</span><span style="margin-left:auto">Autosave: local</span></footer>
+</div>
+<div id="modal" class="modalback"><div class="modal"><h1>BenchLab</h1><p class="sub">A hands-on PC assembly and troubleshooting simulator. Hardware performance and temperatures are modeled estimates, not real-world measurements.</p><div class="modegrid"><button class="mode" data-mode="free"><strong>Free Build</strong><small>Build with a $2,500 starting budget and buy components.</small></button><button class="mode" data-mode="sandbox"><strong>Sandbox · Infinite Money</strong><small>Unlimited funds, every component, no budget pressure.</small></button><button class="mode" data-mode="career"><strong>Career Mode</strong><small>Complete customer orders, stay on budget, earn payment.</small></button><button class="mode" data-mode="repair"><strong>Repair Mode</strong><small>Diagnose a deliberately incomplete customer build.</small></button><button class="mode" data-mode="challenge"><strong>Challenge Mode</strong><small>Build a bootable PC under a strict $650 budget.</small></button></div><div class="row"><span class="sub">Continue a saved workshop if one exists.</span><button id="continueBtn">Continue save</button></div><div class="actions"><button class="primary" id="startFree">Start Free Build</button></div></div></div>
+<div id="bootFlow" role="status" aria-live="polite"><div class="bootflow-panel"><div class="bootflow-title">BENCHLAB UEFI</div><div class="bootflow-sub">POWER-ON SEQUENCE · AUTOMATIC STARTUP</div><div id="bootFlowLines" class="bootflow-lines">Initializing firmware…</div><div class="bootflow-track"><i id="bootFlowProgress"></i></div><div class="bootflow-foot"><span id="bootFlowStatus">Starting system</span><span>ESC · CANCEL / RETURN TO WORKSHOP</span></div><div class="actions"><button onclick="cancelBootFlow()">Cancel startup</button></div></div></div>
+<div id="osShell" aria-label="BenchOS simulated desktop"><div class="os-wallpaper"></div><div class="os-topline"><b>BENCHOS</b><span id="osTopApp">Desktop</span><span class="right" id="osTopHardware">System online</span></div><div class="os-icons">
+<button class="os-icon" onclick="openOSApp('files')"><span class="os-glyph icon-files"><svg viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H10l2 2h7.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M3 9h18"/></svg></span><span>Files</span></button>
+<button class="os-icon" onclick="openOSApp('browser')"><span class="os-glyph icon-browser"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.8 9h16.4M8 4.2c2.7 3.1 2.7 12.5 0 15.6M16 4.2c-2.7 3.1-2.7 12.5 0 15.6"/></svg></span><span>Browser</span></button>
+<button class="os-icon" onclick="openOSApp('settings')"><span class="os-glyph icon-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19 13.5 1.2 1-1.5 2.6-1.5-.5a7 7 0 0 1-1.8 1l-.3 1.6h-3l-.3-1.6a7 7 0 0 1-1.8-1l-1.5.5L7 14.5l1.2-1a6 6 0 0 1 0-2.1L7 10.5l1.5-2.6 1.5.5a7 7 0 0 1 1.8-1l.3-1.6h3l.3 1.6a7 7 0 0 1 1.8 1l1.5-.5 1.5 2.6-1.2 1a6 6 0 0 1 0 2z"/></svg></span><span>Settings</span></button>
+<button class="os-icon" onclick="openOSApp('monitor')"><span class="os-glyph icon-monitor"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M6.5 13l3-3 2.5 2 4-4 1.5 1.5"/></svg></span><span>System monitor</span></button>
+<button class="os-icon" onclick="openOSApp('terminal')"><span class="os-glyph icon-terminal"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg></span><span>Terminal</span></button>
+<button class="os-icon" onclick="openOSApp('notes')"><span class="os-glyph icon-notes"><svg viewBox="0 0 24 24"><path d="M6 3.5h9l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14.5 3.5V8H19M8 12h8M8 16h8"/></svg></span><span>Notepad</span></button>
+<button class="os-icon" onclick="openOSApp('paint')"><span class="os-glyph icon-paint"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4c-.9-.9-.2-2.6 1.1-2.6H18a3 3 0 0 0 3-3C21 7 17 3 12 3z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg></span><span>Paint</span></button>
+<button class="os-icon" onclick="openOSApp('games')"><span class="os-glyph icon-games"><svg viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 3.8 5l-1 3.2a2.5 2.5 0 0 1-4.1 1.1L14 15H10l-1.7 2.3a2.5 2.5 0 0 1-4.1-1.1l-1-3.2A4 4 0 0 1 7 8z"/><path d="M7 10.5v4M5 12.5h4M16.5 11.5h.01M18.5 13.5h.01"/></svg></span><span>Games</span></button>
+</div><div id="osWindows"></div><div id="osStartMenu" class="os-startmenu hidden"><h3>BenchOS · Applications</h3><div class="os-launchgrid"><button onclick="openOSApp('files')">▤ &nbsp; File manager</button><button onclick="openOSApp('browser')">◎ &nbsp; Browser</button><button onclick="openOSApp('settings')">⚙ &nbsp; Settings</button><button onclick="openOSApp('monitor')">▥ &nbsp; System monitor</button><button onclick="openOSApp('terminal')">>_ &nbsp; Terminal</button><button onclick="openOSApp('calculator')">＋ &nbsp; Calculator</button><button onclick="openOSApp('notes')">▧ &nbsp; Notepad</button><button onclick="openOSApp('about')">ⓘ &nbsp; About BenchOS</button><button onclick="openOSApp('paint')">▨ &nbsp; Paint</button><button onclick="openOSApp('games')">♟ &nbsp; Games</button><button onclick="openOSApp('music')">♫ &nbsp; Media player</button></div><div class="actions"><button onclick="osRestart()">Restart</button><button onclick="osShutdown()" class="danger">Shut down</button></div></div><div class="os-taskbar"><button class="os-start" onclick="toggleOSStart()" title="Start menu">◈</button><div id="osTaskApps" class="os-taskapps"></div><div class="os-clock"><div id="osClock">--:--</div><div id="osDate"></div></div><button onclick="osBackToWorkshop()" title="Return to simulator">Workshop</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const catalog=[
+{id:'case',name:'Northstar ATX Airflow Case',type:'case',price:89,desc:'Mid-tower steel chassis',form:'ATX',gpu:340,cooler:160,color:0x202a34},
+{id:'board',name:'B650M Forge Motherboard',type:'board',price:139,socket:'AM5',ram:'DDR5',form:'mATX',watt:55,color:0x172b29},
+{id:'cpu',name:'Ryzen 5 7600',type:'cpu',price:189,socket:'AM5',cores:6,clock:5.1,watt:88,igpu:true,color:0x9ba7b2},
+{id:'ram',name:'32GB DDR5-6000 Kit',type:'ram',price:84,ram:'DDR5',capacity:32,speed:6000,watt:8,color:0x10161f},
+{id:'gpu',name:'GeForce RTX 4060 8GB',type:'gpu',price:299,vram:8,length:240,watt:115,score:14500,power:'8-pin',color:0x303b46},
+{id:'psu',name:'650W 80+ Gold PSU',type:'psu',price:99,watt:650,connectors:['24-pin','8-pin CPU','8-pin GPU','SATA'],color:0x20262d},
+{id:'cooler',name:'120mm Tower Air Cooler',type:'cooler',price:34,sockets:['AM5','AM4','LGA1700'],capacity:125,height:155,color:0x8795a3},
+{id:'ssd',name:'1TB NVMe Gen4 SSD',type:'ssd',price:69,capacity:1000,interface:'M.2 NVMe',watt:6,color:0x344f54},
+{id:'fans',name:'120mm PWM Fan 3-pack',type:'fans',price:29,count:3,watt:9,color:0x263c4a},
+{id:'monitor',name:'24-inch 1080p Monitor',type:'monitor',price:119,color:0x141d26},
+{id:'paste',name:'Thermal Paste',type:'paste',price:8,color:0x8a969e},
+{id:'aio',name:'240mm Liquid Cooler',type:'cooler',price:109,sockets:['AM5','AM4','LGA1700'],capacity:240,height:55,color:0x27343e},
+{id:'hdd',name:'2TB 3.5-inch SATA HDD',type:'storage',price:59,capacity:2000,interface:'SATA',watt:7,color:0x4a555e},
+{id:'wifi',name:'Wi-Fi 6E + Bluetooth PCIe Card',type:'network',price:39,watt:5,color:0x273e4b},
+{id:'rgb',name:'Addressable RGB Light Strips',type:'lighting',price:24,color:0x62d8e8},
+{id:'cablecombs',name:'Premium Sleeved Cable Kit',type:'accessory',price:34,color:0x151a20},
+{id:'support',name:'GPU Anti-Sag Support Bracket',type:'accessory',price:19,color:0x64727d},
+{id:'capture',name:'PCIe Capture Card',type:'expansion',price:129,watt:8,color:0x3d4b57},
+{id:'sound',name:'Dedicated Audio Card',type:'expansion',price:79,watt:6,color:0x34434f},
+{id:'hub',name:'PWM + ARGB Fan Hub',type:'accessory',price:22,watt:4,color:0x1b252d},
+{id:'ram16',name:'16GB DDR5-5600 Kit',type:'ram',price:42,ram:'DDR5',capacity:16,speed:5600,watt:6,color:0x10161f},
+{id:'ram64',name:'64GB DDR5-6000 Kit',type:'ram',price:169,ram:'DDR5',capacity:64,speed:6000,watt:10,color:0x10161f},
+{id:'ram128',name:'128GB DDR5-5200 Kit',type:'ram',price:329,ram:'DDR5',capacity:128,speed:5200,watt:14,color:0x10161f},
+{id:'gpu4060ti',name:'GeForce RTX 4060 Ti 16GB',type:'gpu',price:429,vram:16,length:250,watt:165,score:19500,power:'8-pin',color:0x384550},
+{id:'gpu4070s',name:'GeForce RTX 4070 SUPER 12GB',type:'gpu',price:599,vram:12,length:285,watt:220,score:27500,power:'16-pin',color:0x313c48},
+{id:'gpu7900',name:'Radeon RX 7900 XT 20GB',type:'gpu',price:699,vram:20,length:310,watt:315,score:31000,power:'2×8-pin',color:0x4b3338},
+{id:'gpu1650',name:'GeForce GTX 1650 4GB',type:'gpu',price:149,vram:4,length:175,watt:75,score:7200,power:'Slot powered',color:0x3b454e},
+{id:'monitor4k',name:'27-inch 4K 144Hz Display',type:'monitor',price:429,resolution:'3840×2160',refresh:144,color:0x141d26},
+{id:'monitorwide',name:'34-inch Ultrawide 165Hz Display',type:'monitor',price:499,resolution:'3440×1440',refresh:165,color:0x141d26},
+{id:'monitor2',name:'Second 24-inch 1080p Display',type:'display',price:99,resolution:'1920×1080',refresh:75,color:0x141d26},
+{id:'ssd2',name:'2TB NVMe Gen4 SSD',type:'storage',price:119,capacity:2000,interface:'M.2 NVMe',watt:7,color:0x344f54},
+{id:'ssd4',name:'4TB NVMe Gen4 SSD',type:'storage',price:249,capacity:4000,interface:'M.2 NVMe',watt:8,color:0x344f54},
+{id:'psu850',name:'850W 80+ Gold Modular PSU',type:'psu',price:149,watt:850,connectors:['24-pin','8-pin CPU','16-pin GPU','SATA'],color:0x20262d},
+{id:'psu1000',name:'1000W 80+ Platinum PSU',type:'psu',price:219,watt:1000,connectors:['24-pin','8-pin CPU','16-pin GPU','SATA'],color:0x20262d},
+{id:'fan140',name:'140mm Quiet PWM Fan 2-pack',type:'fans',price:34,count:2,watt:8,color:0x263c4a},
+{id:'webcam',name:'1080p USB Webcam',type:'peripheral',price:49,color:0x29343e},
+{id:'mic',name:'USB Studio Microphone',type:'peripheral',price:89,color:0x29343e},
+{id:'speakers',name:'Desktop Speaker Pair',type:'peripheral',price:59,color:0x303a43},
+{id:'controller',name:'Wireless Game Controller',type:'peripheral',price:54,color:0x242d37},
+{id:'ups',name:'1500VA Battery Backup UPS',type:'power',price:179,watt:12,color:0x252d35},
+{id:'usb',name:'USB-C Expansion Card',type:'expansion',price:39,watt:5,color:0x3d4b57},
+{id:'thermal',name:'High-performance Thermal Paste',type:'paste',price:15,color:0x8a969e}
+];
+const order=['case','board','cpu','paste','cooler','ram','ssd','gpu','psu','fans','cables','panel','monitor','hdd','wifi','capture','sound','hub','aio','rgb','cablecombs','support','boot'];
+const stageNames={case:'Place the case',board:'Install motherboard',cpu:'Install CPU',paste:'Apply thermal paste',cooler:'Mount CPU cooler',ram:'Install RAM',ssd:'Install M.2 SSD',gpu:'Install graphics card',psu:'Install power supply',fans:'Install case fans',cables:'Connect power cables',panel:'Close side panel',monitor:'Connect monitor',boot:'Power on & boot'};
+let state={mode:'free',money:2500,infiniteMoney:false,inventory:[],installed:{},steps:{},selected:null,tab:'build',caseOpen:true,booted:false,osInstalled:false,orderDone:false,settings:{volume:50,sensitivity:1,quality:'High'},log:[],careerOrder:null,bootMenuOpen:false,bootDevice:'BenchOS Boot Manager',bootOrder:['BenchOS Boot Manager','UEFI NVMe Drive','USB Installer','UEFI Network'],secureBoot:true,xmpEnabled:false,displayMode:'Auto',osDesktop:false,osOpenApps:[],osNotes:'Welcome to BenchOS.\n\nThis is a local simulated desktop.'};
+const saved=localStorage.getItem('benchlab-save'); if(saved){try{state={...state,...JSON.parse(saved)}}catch{}}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x111922);scene.fog=new THREE.Fog(0x111922,9,24);
+const camera=new THREE.PerspectiveCamera(45,1,.1,100);camera.position.set(4.8,3.8,6.8);
+const renderer=new THREE.WebGLRenderer({canvas:$('#scene'),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;
+scene.add(new THREE.HemisphereLight(0xc8e7ff,0x26313a,2));const key=new THREE.DirectionalLight(0xffffff,3.1);key.position.set(4,8,5);key.castShadow=true;scene.add(key);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:0x202a33,roughness:.85}));floor.rotation.x=-Math.PI/2;floor.position.y=-.03;floor.receiveShadow=true;scene.add(floor);
+const bench=new THREE.Mesh(new THREE.BoxGeometry(6,.22,3.7),new THREE.MeshStandardMaterial({color:0x343b41,roughness:.65,metalness:.15}));bench.position.set(0,.25,0);bench.receiveShadow=true;scene.add(bench);
+const legs=new THREE.Mesh(new THREE.BoxGeometry(5.5,.65,3.2),new THREE.MeshStandardMaterial({color:0x171d23,metalness:.35,roughness:.5}));legs.position.set(0,-.12,0);scene.add(legs);
+const pc=new THREE.Group();pc.position.set(0,.42,0);scene.add(pc);let objects={},raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2(),drag=false,prev={x:0,y:0},targetRot=0,zoom=1;
+function mat(color,metalness=.25,roughness=.5){return new THREE.MeshStandardMaterial({color,metalness,roughness})}
+function box(group,name,size,pos,color,opts={}){let m=new THREE.Mesh(new THREE.BoxGeometry(...size),mat(color,opts.metalness??.25,opts.roughness??.45));m.name=name;m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;group.add(m);objects[name]=m;return m}
+
+function cylinder(group,name,radius,height,pos,color,axis='z',segments=32){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,height,segments),mat(color,.55,.32));
+ m.name=name;m.position.set(...pos);
+ if(axis==='z')m.rotation.x=Math.PI/2;
+ if(axis==='x')m.rotation.z=Math.PI/2;
+ m.castShadow=true;m.receiveShadow=true;group.add(m);objects[name]=m;return m;
+}
+function makeFan(group,x,y,z,r=.19,axis='z',prefix='fan'){
+ const fan=new THREE.Group();fan.position.set(x,y,z);
+ if(axis==='x')fan.rotation.y=Math.PI/2;
+ if(axis==='y')fan.rotation.x=Math.PI/2;
+ group.add(fan);
+ const frame=new THREE.Mesh(new THREE.BoxGeometry(r*2.25,r*2.25,.075),mat(0x202a34,.65,.34));frame.castShadow=true;fan.add(frame);
+ const torus=new THREE.Mesh(new THREE.TorusGeometry(r*.82,.025,8,32),mat(0x738391,.75,.28));torus.position.z=.05;fan.add(torus);
+ const hub=new THREE.Mesh(new THREE.CylinderGeometry(r*.19,r*.19,.075,24),mat(0x10161d,.65,.3));hub.rotation.x=Math.PI/2;hub.position.z=.075;fan.add(hub);
+ for(let i=0;i<7;i++){
+   const bladeShape=new THREE.Shape();
+   bladeShape.moveTo(r*.12,-r*.12);bladeShape.quadraticCurveTo(r*.55,-r*.02,r*.68,r*.25);
+   bladeShape.quadraticCurveTo(r*.43,r*.48,r*.20,r*.40);bladeShape.quadraticCurveTo(r*.16,r*.12,r*.12,-r*.12);
+   const blade=new THREE.Mesh(new THREE.ShapeGeometry(bladeShape),mat(0x394b59,.35,.42));
+   blade.rotation.z=i*Math.PI*2/7;blade.position.z=.065;fan.add(blade);
+ }
+ // Four visible corner screws make the frame read as manufactured hardware.
+ for(let i=0;i<4;i++){
+   const sx=(i%2?1:-1)*r*.83, sy=(i<2?1:-1)*r*.83;
+   const screw=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.012,12),mat(0xaeb9c2,.8,.25));
+   screw.rotation.x=Math.PI/2;screw.position.set(sx,sy,.055);fan.add(screw);
+ }
+ fan.name=prefix;
+ return fan;
+}
+function makeDisplayTexture(){
+ const c=document.createElement('canvas');c.width=640;c.height=360;const g=c.getContext('2d');
+ g.fillStyle='#06111d';g.fillRect(0,0,640,360);
+ if(state.bootMenuOpen){
+  g.fillStyle='#0b2537';g.fillRect(0,0,640,62);g.fillStyle='#79e8f4';g.font='bold 25px monospace';g.fillText('BENCHLAB UEFI',28,39);
+  g.fillStyle='#b9d8e8';g.font='14px monospace';g.fillText('ONE-TIME BOOT MENU  /  SELECT BOOT DEVICE',28,88);
+  const opts=state.bootOrder||['BenchOS Boot Manager','UEFI NVMe Drive','USB Installer','UEFI Network'];
+  opts.forEach((d,i)=>{let y=118+i*43;if(d===state.bootDevice){g.fillStyle='#15506a';g.fillRect(22,y-22,596,34);g.strokeStyle='#70e7f2';g.strokeRect(22,y-22,596,34)}g.fillStyle=d===state.bootDevice?'#ffffff':'#a8c6d8';g.font='16px monospace';g.fillText((d===state.bootDevice?'▶ ':'  ')+d,38,y)});
+  g.fillStyle='#6e9bb2';g.font='12px monospace';g.fillText('F10 SAVE   ·   ESC EXIT   ·   SIMULATED FIRMWARE',28,330);
+ }else if(state.booted&&state.osInstalled){
+  const grad=g.createLinearGradient(0,0,640,360);grad.addColorStop(0,'#0c405b');grad.addColorStop(1,'#111a39');g.fillStyle=grad;g.fillRect(0,0,640,360);
+  g.fillStyle='#e9f7ff';g.font='bold 30px system-ui';g.fillText('BenchOS',28,54);g.fillStyle='#9cdcf0';g.font='14px system-ui';g.fillText('Desktop · System online',30,80);
+  g.fillStyle='#122b42cc';g.fillRect(24,108,592,214);g.fillStyle='#75e8f3';g.font='bold 19px system-ui';g.fillText('Welcome back',44,146);g.fillStyle='#d8eaf5';g.font='14px system-ui';g.fillText('Your simulated PC is ready.',44,177);g.fillText('CPU   '+(state.installed.cpu?(installedPart('cpu')?.name||'Detected'):'Not detected'),44,215);g.fillText('RAM   '+(hasType('ram')?(installedPart('ram')?.capacity+'GB installed'):'Not detected'),44,241);g.fillText('GPU   '+(hasType('gpu')?(installedPart('gpu')?.name||'Detected'):'Integrated graphics'),44,267);
+ }else if(state.booted){
+  g.fillStyle='#d8e9f3';g.font='bold 22px monospace';g.fillText('BENCHLAB POST PASSED',28,48);g.font='15px monospace';g.fillStyle='#8ee7f4';g.fillText('UEFI INITIALIZED',28,80);g.fillStyle='#a8bac8';g.fillText('No operating system loaded.',28,130);g.fillText('Open UEFI / OS tab to choose a boot device',28,158);g.fillText('or install the simulated BenchOS.',28,184);
+ }else{
+  g.fillStyle='#79e8f4';g.font='bold 28px monospace';g.fillText('BENCHLAB',28,48);g.fillStyle='#c1d2e0';g.font='15px monospace';g.fillText('PC WORKSTATION',30,75);g.fillStyle='#a6b8c8';g.font='14px monospace';g.fillText('Power on to run POST',30,125);g.fillText('UEFI firmware simulation',30,151);g.fillStyle='#314d61';g.fillRect(28,185,584,2);g.fillStyle='#6f8da2';g.font='12px monospace';g.fillText('CPU  ·  MEMORY  ·  GRAPHICS  ·  STORAGE',28,210);
+ }
+ const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
+}
+function buildScene(){
+ while(pc.children.length)pc.remove(pc.children[0]);objects={};
+ const dark=0x171d24, steel=0x39434c, edge=0x687680;
+ // Realistic open-frame mid-tower: visible rails and corner posts rather than a solid box.
+ box(pc,'case-base',[2.34,.12,1.72],[0,.04,0],dark,{metalness:.65,roughness:.35});
+ box(pc,'case-top',[2.34,.10,1.72],[0,2.76,0],dark,{metalness:.65,roughness:.35});
+ for(const x of [-1.12,1.12])for(const y of [.12,2.68]){
+   box(pc,'case-corner-'+x+'-'+y,[.10,.12,1.72],[x,y,0],steel,{metalness:.75,roughness:.3});
+ }
+ for(const z of [-.82,.82]){
+   box(pc,'case-post-'+z,[.10,2.68,.10],[-1.12,1.38,z],steel,{metalness:.75,roughness:.3});
+   box(pc,'case-post-right-'+z,[.10,2.68,.10],[1.12,1.38,z],steel,{metalness:.75,roughness:.3});
+ }
+ // Rear I/O / expansion-slot side and perforated rear vent.
+ box(pc,'rear-panel',[.07,2.48,1.48],[-1.08,1.39,-.02],0x252e36,{metalness:.65});
+ for(let i=0;i<7;i++)box(pc,'expansion-slot-'+i,[.025,.09,.55],[-1.035,.72+i*.105,-.35],0x65727d,{metalness:.8,roughness:.3});
+ box(pc,'rear-io-shield',[.035,.48,.38],[-1.025,2.12,-.48],0x111820,{metalness:.5});
+ // Front fascia on the right edge, with a mesh intake and three vertically stacked fans.
+ box(pc,'front-fascia',[.11,2.57,1.53],[1.13,1.39,0],0x202a34,{metalness:.55,roughness:.4});
+ box(pc,'front-intake',[.035,2.20,1.23],[1.205,1.39,0],0x111820,{metalness:.25,roughness:.8});
+ for(let yy=0;yy<19;yy++)for(let zz=0;zz<11;zz++){
+   const dot=new THREE.Mesh(new THREE.SphereGeometry(.012,6,6),mat(0x53616d,.2,.7));
+   dot.position.set(1.229,.43+yy*.105,-.57+zz*.114);pc.add(dot);
+ }
+ for(let i=0;i<3;i++)makeFan(pc,1.24,.65+i*.72,0,.24,'x','front-fan-'+i);
+ // Power button and front I/O.
+ cylinder(pc,'power-button',.055,.025,[1.245,2.48,.48],0x67d5e6,'x',24);
+ for(let i=0;i<2;i++)cylinder(pc,'front-usb-'+i,.035,.025,[1.245,2.31,.28+i*.13],0x7f909c,'x',16);
+ // Motherboard tray and board, with visible PCB traces, socket, ports and headers.
+ box(pc,'motherboard-tray',[2.02,2.35,.055],[0,1.39,-.65],0x252f37,{metalness:.35,roughness:.65});
+ if(state.installed.board){
+   box(pc,'motherboard',[1.82,2.10,.075],[-.02,1.43,-.57],catalog.find(x=>x.id==='board').color,{metalness:.18,roughness:.68});
+   // PCB trace paths and mounting points.
+   for(let i=0;i<7;i++)box(pc,'pcb-trace-'+i,[.018,.62,.012],[-.75+i*.23,1.45,-.523],0x3b7770,{metalness:.2,roughness:.5});
+   for(const x of [-.82,.78])for(const y of [.48,2.37]){
+     cylinder(pc,'board-mount-'+x+'-'+y,.035,.018,[x,y,-.515],0xc2b77c,'z',12);
+   }
+   box(pc,'cpu-socket',[.62,.62,.045],[-.25,1.88,-.505],0x11191e,{metalness:.45});
+   box(pc,'socket-retention',[.54,.54,.025],[-.25,1.88,-.472],0x9aa6af,{metalness:.7,roughness:.3});
+   // DIMM slots and rear I/O ports.
+   for(let i=0;i<4;i++)box(pc,'dimm-slot-'+i,[.105,.86,.07],[.40+i*.15,1.83,-.485],i<2?0x20262c:0x4b5b66,{metalness:.65});
+   for(let i=0;i<6;i++)box(pc,'rear-port-'+i,[.12,.11,.12],[-.93,1.78+i*.15,-.52],0x0b1117,{metalness:.6});
+   box(pc,'vrm-heatsink',[.20,.72,.15],[-.69,2.10,-.47],0x687781,{metalness:.7,roughness:.3});
+   for(let i=0;i<6;i++)box(pc,'vrm-fin-'+i,[.025,.66,.17],[-.78+i*.035,2.10,-.385],0xa1adb6,{metalness:.8,roughness:.28});
+   box(pc,'chipset-heatsink',[.36,.30,.10],[.55,.92,-.47],0x45515c,{metalness:.7});
+   box(pc,'m2-heatsink',[.72,.12,.06],[.32,1.40,-.47],0x687781,{metalness:.7});
+ }
+ if(state.installed.cpu){
+   box(pc,'cpu-package',[.48,.48,.08],[-.25,1.88,-.425],0x202a32,{metalness:.55,roughness:.3});
+   box(pc,'cpu-heatspreader',[.39,.39,.025],[-.25,1.88,-.372],catalog.find(x=>x.id==='cpu').color,{metalness:.8,roughness:.24});
+   box(pc,'cpu-brand-mark',[.16,.055,.008],[-.25,1.91,-.355],0x3c4b57,{metalness:.6});
+ }
+ if(hasType('ram')){
+   const dimmCount=(installedPart('ram')?.capacity||32)>=64?4:2;
+   for(let i=0;i<dimmCount;i++){
+     const x=dimmCount===4?-.05+i*.30:.40+i*.30;
+     box(pc,'ram-pcb-'+i,[.105,.79,.055],[x,1.83,-.405],0x10171d,{metalness:.45});
+     box(pc,'ram-heatsink-'+i,[.125,.70,.065],[x,1.85,-.36],0x242f39,{metalness:.75,roughness:.3});
+     for(let j=0;j<6;j++)box(pc,'ram-detail-'+i+'-'+j,[.075,.065,.012],[x,1.58+j*.105,-.32],0x687783,{metalness:.5});
+     box(pc,'ram-lightbar-'+i,[.09,.045,.018],[x,2.23,-.32],0x64d7e8,{metalness:.25,roughness:.2});
+   }
+ }
+ if(state.installed.cooler){
+   // Tower cooler with a real fin stack, heat pipes and a front-mounted fan.
+   box(pc,'cooler-base',[.48,.10,.40],[-.25,2.17,-.22],0x9aa5ad,{metalness:.8,roughness:.25});
+   box(pc,'cooler-fin-stack',[.54,.70,.36],[-.25,2.51,-.24],0x8c9aa5,{metalness:.85,roughness:.28});
+   for(let i=0;i<15;i++)box(pc,'cooler-fin-'+i,[.57,.018,.40],[-.25,2.19+i*.045,-.24],i%2?0x71818d:0xaab5bd,{metalness:.8,roughness:.26});
+   for(let i=0;i<4;i++)cylinder(pc,'heatpipe-'+i,.025,.76,[-.40+i*.10,2.52,-.02],0xb7c2c9,'y',12);
+   makeFan(pc,-.25,2.49,.005,.24,'z','cpu-cooler-fan');
+ }
+ if(hasType('ssd')||hasType('storage')){
+   box(pc,'ssd-pcb',[.78,.13,.045],[.27,1.39,-.395],0x142a2d,{metalness:.2,roughness:.65});
+   box(pc,'ssd-controller',[.12,.08,.025],[-.02,1.39,-.365],0x65747e,{metalness:.65});
+   for(let i=0;i<4;i++)box(pc,'ssd-memory-'+i,[.09,.075,.025],[.13+i*.14,1.39,-.365],0x252d35,{metalness:.4});
+   box(pc,'ssd-label',[.27,.07,.008],[.38,1.39,-.35],0x9ca9b1,{metalness:.2,roughness:.5});
+ }
+ if(hasType('gpu')){
+   // Full-length graphics card with shroud, three axial fans, backplate and gold PCIe contacts.
+   box(pc,'gpu-pcb',[1.75,.12,.43],[.02,.96,.04],0x151b22,{metalness:.35});
+   box(pc,'gpu-shroud',[1.88,.40,.50],[.02,1.10,.08],(installedPart('gpu')||part('gpu')).color,{metalness:.65,roughness:.3});
+   box(pc,'gpu-backplate',[1.82,.045,.46],[.02,1.325,.07],0x596773,{metalness:.8,roughness:.27});
+   for(let i=0;i<3;i++){
+     const x=-.60+i*.62;
+     makeFan(pc,x,1.10,.345,.145,'z','gpu-fan-'+i);
+   }
+   for(let i=0;i<10;i++)box(pc,'gpu-vent-'+i,[.055,.16,.012],[-.72+i*.15,1.10,.345],0x77858f,{metalness:.7});
+   box(pc,'gpu-io-bracket',[.06,.42,.49],[-.98,1.10,.05],0x9ca7b0,{metalness:.8,roughness:.28});
+   for(let i=0;i<4;i++)box(pc,'gpu-port-'+i,[.018,.055,.10],[-.945,.96+i*.09,.12],0x0b1117,{metalness:.8});
+ }
+ if(hasType('psu')){
+   box(pc,'psu-housing',[1.05,.48,.68],[.40,.38,-.18],0x202830,{metalness:.7,roughness:.35});
+   box(pc,'psu-label',[.42,.22,.018],[.40,.38,.17],0x56636d,{metalness:.25,roughness:.65});
+   cylinder(pc,'psu-fan-ring',.19,.025,[.40,.38,.19],0x11171d,'z',32);
+   makeFan(pc,.40,.38,.215,.16,'z','psu-fan');
+   for(let i=0;i<8;i++)box(pc,'psu-vent-'+i,[.035,.28,.012],[.04+i*.095,.38,.19],0x65727c,{metalness:.7});
+ }
+ if(state.installed.fans){
+   makeFan(pc,-.88,2.30,-.42,.22,'z','rear-case-fan');
+   makeFan(pc,-.88,.72,-.42,.22,'z','bottom-case-fan');
+ }
+ if(state.installed.aio){
+   // A 240 mm radiator, two fans, pump block and paired coolant tubes.
+   box(pc,'aio-radiator',[.92,.16,.42],[-.72,2.43,-.30],0x252f38,{metalness:.72,roughness:.32});
+   for(let i=0;i<14;i++)box(pc,'aio-rad-fin-'+i,[.018,.15,.40],[-1.16+i*.067,2.43,-.30],0x83919b,{metalness:.8,roughness:.3});
+   makeFan(pc,-.95,2.43,-.04,.17,'z','aio-fan-left');makeFan(pc,-.49,2.43,-.04,.17,'z','aio-fan-right');
+   cylinder(pc,'aio-pump',.17,.10,[-.25,1.88,-.30],0x18242c,'z',32);
+   cylinder(pc,'aio-pump-cap',.115,.018,[-.25,1.88,-.24],0x64d7e8,'z',32);
+   const tubeMat=mat(0x10171d,.15,.5);
+   for(const off of [-.07,.07]){const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(-.25+off,1.88,-.22),new THREE.Vector3(-.02,2.05,-.16),new THREE.Vector3(-.20,2.35,-.12),new THREE.Vector3(-.50+off,2.43,-.08)]);pc.add(new THREE.Mesh(new THREE.TubeGeometry(curve,28,.025,8,false),tubeMat));}
+ }
+ if(state.installed.hdd){
+   box(pc,'hdd-housing',[.72,.20,.92],[.38,.63,-.08],0x3b454e,{metalness:.72,roughness:.35});
+   box(pc,'hdd-label',[.48,.008,.44],[.38,.735,.08],0x9da8b0,{metalness:.3,roughness:.5});
+   box(pc,'hdd-controller',[.30,.025,.18],[.38,.51,-.44],0x18232a,{metalness:.45});
+ }
+ if(state.installed.wifi){
+   box(pc,'wifi-card-pcb',[.68,.07,.28],[-.15,.72,.27],0x152b35,{metalness:.25});
+   box(pc,'wifi-shield',[.32,.035,.18],[-.15,.77,.27],0x85929c,{metalness:.65});
+   for(let i=0;i<2;i++){cylinder(pc,'wifi-antenna-'+i,.018,.58,[-.38+i*.46,.98,.38],0x202a34,'y',12);cylinder(pc,'wifi-antenna-tip-'+i,.024,.07,[-.38+i*.46,1.29,.38],0x647985,'y',12);}
+ }
+ if(state.installed.capture||state.installed.sound){
+   for(const id of ['capture','sound'])if(state.installed[id]){
+     const x=id==='capture'?.22:.65;
+     box(pc,id+'-pcb',[.38,.065,.26],[x,.68,.30],id==='capture'?0x243b4a:0x29333f,{metalness:.3});
+     box(pc,id+'-chip',[.13,.035,.12],[x,.72,.30],0x7d8b95,{metalness:.6});
+     box(pc,id+'-bracket',[.035,.22,.26],[-.94,.68,.30],0x9aa6af,{metalness:.75});
+   }
+ }
+ if(state.installed.rgb){
+   for(let i=0;i<9;i++){const light=new THREE.Mesh(new THREE.BoxGeometry(.17,.035,.035),new THREE.MeshStandardMaterial({color:[0x51d9ef,0x6b7bff,0xc36bff][i%3],emissive:[0x1d8296,0x2937a3,0x7026a3][i%3],emissiveIntensity:1.2}));light.position.set(-.68+i*.17, .25, .80);light.name='rgb-strip-'+i;pc.add(light);}
+ }
+ if(state.installed.cablecombs){
+   for(let i=0;i<8;i++){box(pc,'cable-comb-'+i,[.045,.11,.07],[.58+i*.035,1.58-i*.025,.08],0x111820,{metalness:.35});}
+ }
+ if(state.installed.support){
+   box(pc,'gpu-support-foot',[.30,.07,.20],[.50,.80,.36],0x242d35,{metalness:.65});
+   box(pc,'gpu-support-post',[.055,.34,.055],[.50,.98,.36],0x7d8a94,{metalness:.75});
+   box(pc,'gpu-support-pad',[.18,.045,.12],[.50,1.16,.36],0x9aa7b0,{metalness:.7});
+ }
+ if(state.installed.hub){
+   box(pc,'fan-hub',[.36,.20,.07],[.72,.58,-.48],0x1b252d,{metalness:.45});
+   for(let i=0;i<6;i++)box(pc,'hub-port-'+i,[.025,.07,.018],[.59+i*.05,.58,-.438],0x7e8d98,{metalness:.5});
+ }
+ if(state.steps.cables){
+   // Bundled sleeved power leads with bent runs, plus board and GPU connectors.
+   const cableMat=mat(0x121820,.18,.62);
+   function cable(name,points,r=.025){
+     const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+     const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,24,r,7,false),cableMat);
+     mesh.name=name;mesh.castShadow=true;pc.add(mesh);objects[name]=mesh;
+   }
+   for(let i=0;i<8;i++){
+     const x=.48+i*.045;
+     cable('atx-sleeve-'+i,[[.88,1.92,-.38],[.96,1.72,-.18],[.85,1.35,-.05],[.67,1.25,-.02],[.61,1.38,-.36]],.012);
+   }
+   for(let i=0;i<6;i++){
+     const x=.20+i*.045;
+     cable('gpu-power-'+i,[[.85,.95,.28],[.70,.82,.42],[.42,.84,.43],[.24,.94,.32]],.012);
+   }
+   box(pc,'atx-connector',[.12,.28,.10],[.60,1.39,-.32],0x111820,{metalness:.35});
+ }
+ // Side panel is clear tempered glass when secured; remove it for the assembly view.
+ if(!state.caseOpen){
+   const panel=new THREE.Mesh(new THREE.BoxGeometry(2.20,2.58,.025),new THREE.MeshPhysicalMaterial({color:0x8db9c9,transparent:true,opacity:.16,roughness:.12,metalness:.18,side:THREE.DoubleSide}));
+   panel.position.set(0,1.39,.88);panel.name='side-panel';panel.castShadow=true;pc.add(panel);objects['side-panel']=panel;
+   for(const x of [-1.08,1.08])for(const y of [.18,2.60])cylinder(pc,'glass-screw-'+x+'-'+y,.028,.02,[x,y,.91],0xb6c2ca,'z',12);
+ }else{
+   // Glass panel rests beside the case while open, clearly showing the case is open.
+   const panel=new THREE.Mesh(new THREE.BoxGeometry(1.05,2.58,.025),new THREE.MeshPhysicalMaterial({color:0x8db9c9,transparent:true,opacity:.13,roughness:.15,metalness:.15,side:THREE.DoubleSide}));
+   panel.position.set(-2.0,1.39,.1);panel.rotation.y=-.16;panel.name='removed-glass-panel';pc.add(panel);
+ }
+ // Feet, desk-side power lead and realistic monitor/peripherals.
+ for(const x of [-.90,.90])for(const z of [-.62,.62])box(pc,'case-foot-'+x+'-'+z,[.22,.10,.22],[x,-.035,z],0x090d11,{metalness:.3});
+ if(hasType('monitor')){
+   box(pc,'monitor-stand-base',[.48,.06,.28],[1.88,.43,.25],0x202830,{metalness:.6});
+   box(pc,'monitor-stand',[.10,.38,.10],[1.88,.63,.25],0x65727c,{metalness:.7});
+   box(pc,'monitor-bezel',[1.30,.82,.09],[1.88,1.27,.25],0x111820,{metalness:.5});
+   const display=new THREE.Mesh(new THREE.PlaneGeometry(1.20,.70),new THREE.MeshBasicMaterial({map:makeDisplayTexture(),toneMapped:false}));display.position.set(1.88,1.27,.302);display.name='monitor-screen';pc.add(display);objects['monitor-screen']=display;
+   if(state.booted)box(pc,'monitor-login-glow',[.42,.035,.008],[1.88,1.24,.312],0x63d7e7,{metalness:.2,roughness:.25});
+ }
+ if(hasType('display')){
+   box(pc,'second-display-stand-base',[.42,.05,.24],[2.95,.43,.18],0x202830,{metalness:.6});
+   box(pc,'second-display-stand',[.08,.34,.08],[2.95,.61,.18],0x65727c,{metalness:.7});
+   box(pc,'second-display-bezel',[1.10,.68,.08],[2.95,1.20,.18],0x111820,{metalness:.5});
+   const display2=new THREE.Mesh(new THREE.PlaneGeometry(1.02,.60),new THREE.MeshBasicMaterial({map:makeDisplayTexture(),toneMapped:false}));display2.position.set(2.95,1.20,.228);display2.name='second-display-screen';pc.add(display2);objects['second-display-screen']=display2;
+ }
+ if(state.steps.peripherals){
+   box(pc,'keyboard-body',[.92,.055,.28],[1.35,.39,.92],0x202a34,{metalness:.4});
+   for(let row=0;row<4;row++)for(let col=0;col<13;col++)box(pc,'key-'+row+'-'+col,[.048,.012,.045],[.94+col*.068,.425-row*.001,.83+row*.065],0x7a8791,{metalness:.25,roughness:.5});
+   box(pc,'mouse',[.15,.09,.22],[2.0,.43,.91],0x303b47,{metalness:.45});
+ }
+}
+buildScene();
+function persist(){localStorage.setItem('benchlab-save',JSON.stringify(state));$('#money').textContent=state.infiniteMoney?'∞ FUNDS':'$'+state.money.toLocaleString();$('#modeLabel').textContent=state.mode.toUpperCase()+' MODE'}
+function log(msg,kind='info'){state.log.unshift({msg,kind,time:new Date().toLocaleTimeString()});state.log=state.log.slice(0,40);$('#status').textContent=msg;renderTab()}
+function part(id){return catalog.find(p=>p.id===id)}
+function hasType(type){return Object.keys(state.installed).some(id=>state.installed[id]&&part(id)?.type===type)}
+function installedPart(type){return Object.keys(state.installed).map(id=>part(id)).find(p=>p&&p.type===type)||part(type)}
+function installedStorage(){return Object.keys(state.installed).map(id=>part(id)).find(p=>p&&(p.type==='ssd'||p.type==='storage'))}
+function isPartInstalled(id){const p=part(id);if(!p)return false;if(p.type==='storage'||p.type==='ssd')return hasType('storage')||hasType('ssd');return hasType(p.type)}
+function owned(id){return !!state.installed[id]||state.inventory.includes(id)}
+function purchase(id){const p=part(id);if(!p)return;if(state.inventory.includes(id)||state.installed[id]){log(p.name+' is already owned.','warn');return}if(!state.infiniteMoney&&state.money<p.price){log('Insufficient funds for '+p.name+'.','bad');return}if(!state.infiniteMoney)state.money-=p.price;state.inventory.push(id);persist();log('Purchased '+p.name+'.','ok')}
+function compatibility(id){
+ const p=part(id),issues=[];if(!p)return ['Unknown component.'];
+ if(id==='board'&&state.installed.case===false)issues.push('Place a case first.');
+ if(id==='cpu'&&(!state.installed.board||part('board').socket!==p.socket))issues.push('Requires a motherboard with '+p.socket+' socket.');
+ if(id==='board'&&state.installed.cpu&&p.socket!==part('cpu').socket)issues.push('Socket mismatch: CPU needs '+part('cpu').socket+'.');
+ if(['ram','gpu','psu','cooler','cpu','board'].includes(p.type)&&hasType(p.type)&&!state.installed[id])issues.push('A '+p.type.toUpperCase()+' is already installed. Remove/reset it before changing to another model.');
+ if(p.type==='ram'&&state.installed.board&&part('board').ram!==p.ram)issues.push('RAM generation does not match motherboard.');
+ if(p.type==='gpu'&&state.installed.case&&p.length>part('case').gpu)issues.push('GPU exceeds case clearance.');
+ if(p.type==='cooler'&&state.installed.case&&p.height>part('case').cooler)issues.push('Cooler exceeds case clearance.');
+ if(p.type==='psu'&&hasType('gpu')){let load=(installedPart('cpu')?.watt||0)+(installedPart('gpu')?.watt||0)+100;if(p.watt<load*1.3)issues.push('PSU capacity is below recommended system load plus 30% headroom.')}
+ if(p.type==='cooler'&&!state.installed.cpu)issues.push('Install the CPU before mounting its cooler.');
+ if(id==='paste'&&!state.installed.cpu)issues.push('Install the CPU before applying thermal paste.');
+ return issues;
+}
+function install(id){
+ if(id==='case'){if(state.installed.case){log('Case is already on the bench.');return}state.installed.case=true;state.inventory=state.inventory.filter(x=>x!=='case');state.caseOpen=true;buildScene();persist();log('Case placed on workbench. Remove the side panel to begin assembly.','ok');return}
+ if(id==='panel'){state.caseOpen=!state.caseOpen;buildScene();persist();log(state.caseOpen?'Side panel removed.':'Side panel secured.');return}
+ if(id==='cables'){let missing=['board','cpu'].filter(x=>!state.installed[x]);if(!hasType('psu'))missing.push('psu');if(missing.length){log('Cannot route power cables yet. Missing: '+missing.join(', ')+'.','bad');return}state.steps.cables=true;buildScene();persist();log('24-pin ATX, CPU EPS, GPU and SATA power leads connected in the simulated harness.','ok');return}
+ if(id==='peripherals'){state.steps.peripherals=true;buildScene();persist();log('Keyboard and mouse connected. Buy and install a display separately.','ok');return}
+ if(id==='boot'){bootPC();return}
+ if(!state.inventory.includes(id)&&!state.installed[id]){log('You do not own this part. Open Component shop first.','warn');return}
+ if(state.installed[id]){log(part(id).name+' is already installed.');return}
+ if(!state.caseOpen&&id!=='monitor'){log('Open the side panel before working inside the case.','bad');return}
+ const issues=compatibility(id);if(issues.length){log('Installation blocked: '+issues.join(' '),'bad');return}
+ state.installed[id]=true;state.inventory=state.inventory.filter(x=>x!==id);if(id==='paste')state.steps.paste=true;buildScene();persist();log(part(id).name+' installed.','ok');
+}
+function validate(){
+ const e=[];if(!state.installed.case)e.push('Case is not on the workbench.');if(!state.installed.board)e.push('Motherboard is missing.');if(!state.installed.cpu)e.push('CPU is missing.');if(!hasType('ram'))e.push('RAM is missing.');if(!hasType('psu'))e.push('Power supply is missing.');if(!state.steps.cables)e.push('Main power cables are not connected.');if(!hasType('cooler'))e.push('CPU cooler is missing.');if(!state.steps.paste)e.push('Thermal paste has not been applied.');if(hasType('gpu')&&!hasType('psu'))e.push('GPU has no power supply.');if(!hasType('ssd')&&!hasType('storage'))e.push('No storage installed; an OS cannot be installed.');if(!hasType('monitor'))e.push('Monitor is not connected.');if(state.caseOpen)e.push('Side panel is still open.');return e;
+}
+function bootPC(){const e=validate();if(e.length){state.booted=false;buildScene();persist();log('POST FAILED: '+e.join(' '),'bad');return}state.booted=true;state.bootMenuOpen=true;buildScene();persist();log('POST passed. CPU, memory and storage detected. UEFI initialized successfully. Boot menu is ready.','ok');state.tab='bios';renderTab()}
+function score(){const cpu=installedPart('cpu'),gpu=installedPart('gpu'),ram=installedPart('ram');let c=cpu?cpu.cores*1250*(cpu.clock/4.5):0,g=hasType('gpu')?(gpu?.score||0):cpu?.igpu?2600:0,r=ram?Math.min(ram.capacity,128)*55:0;return Math.round((c*.45+g*.55+r)*(hasType('cooler')?1:0.72)*((hasType('ssd')||hasType('storage'))?1.04:0.9))}
+function temperature(){let load=(installedPart('cpu')?.watt||0)+(hasType('gpu')?(installedPart('gpu')?.watt||0):0);return Math.round(32+load*(hasType('cooler')?0.22:0.55)+(state.installed.fans?-5:8))}
+const tabs={
+ pc:()=>`<h2 class="section-title">My PC</h2><p class="sub">Inspect your current build, save a named snapshot of this PC, or boot into BenchOS.</p><div class="card"><div class="row"><div><h3>Current computer</h3><p>${state.installed.case?'Case assembled':'No case installed'} · ${Object.keys(state.installed).length} installed component(s)</p></div><span class="tag ${state.booted?'ok':'warn'}">${state.osDesktop?'DESKTOP OPEN':state.booted?'POWERED ON':'POWERED OFF'}</span></div><p>CPU: ${installedPart('cpu')?.name||'Not installed'}</p><p>RAM: ${installedPart('ram')?installedPart('ram').capacity+' GB '+installedPart('ram').ram:'Not installed'}</p><p>Graphics: ${installedPart('gpu')?installedPart('gpu').name+' · '+(installedPart('gpu').vram||0)+' GB VRAM':'Integrated / basic adapter'}</p><p>Storage: ${installedStorage()?.name||'Not installed'}</p><p>Operating system: ${state.osInstalled?'BenchOS installed':'No OS installed'}</p></div><div class="card"><h3>Look at PC</h3><p>Power on the assembled computer, run POST automatically, install BenchOS if needed, then enter the desktop. Press Escape to return to the workshop.</p><div class="actions"><button class="primary" onclick="lookAtPC()">Look at PC / Start PC</button></div></div><div class="card"><h3>Save current PC</h3><p>Save a separate snapshot of the installed parts, inventory, wiring, settings and operating-system state in this browser.</p><div class="actions"><button onclick="saveCurrentPC()">Save current PC</button><button onclick="loadCurrentPC()" ${!localStorage.getItem('benchlab-pc-snapshot')?'disabled':''}>Load saved PC</button></div><p class="sub">${localStorage.getItem('benchlab-pc-snapshot')?'A PC snapshot is saved in this browser.':'No separate PC snapshot saved yet.'}</p></div><div class="card"><h3>Go into the PC</h3><p>${state.osInstalled?'BenchOS is installed. Startup runs POST automatically and opens the desktop.':'Start the PC to run POST and automatically install BenchOS when the hardware checks pass.'}</p><div class="actions"><button class="primary" onclick="goIntoPC()">${state.osDesktop?'Return to BenchOS':'Go into the PC'}</button><button onclick="switchTab('bios')">BIOS / OS</button></div></div>`,
+ build:()=>`<div class="row"><div><h2 class="section-title">Assembly workflow</h2><div class="sub">Select a step, then install a part you own.</div></div><span class="tag">${Object.keys(state.installed).length} parts</span></div><div class="notice"><b>Current step:</b> ${nextStep()}<div class="meter"><i style="width:${progress()}%"></i></div><div class="sub">${progress()}% of core assembly steps complete</div></div><div class="stack">${order.filter(x=>!['boot','cables','panel'].includes(x)).map(id=>{let p=part(id),done=id==='paste'?state.steps.paste:isPartInstalled(id);return `<div class="card component"><div><h3>${p?.name||'Power cables'}</h3><p>${p?.desc||'Route motherboard and component power leads'}</p><span class="tag">${done?'INSTALLED':state.inventory.includes(id)?'IN INVENTORY':'NOT OWNED'}</span></div><button ${done?'disabled':''} onclick="act('${id}')">${done?'Done':state.inventory.includes(id)?'Install':'Shop'}</button></div>`}).join('')}<div class="card"><h3>Assembly actions</h3><p>Case panel: ${state.caseOpen?'open':'closed'} · Power harness: ${state.steps.cables?'connected':'disconnected'}</p><div class="actions"><button onclick="act('case')">${state.installed.case?'Case placed':'Place case'}</button><button onclick="act('panel')">${state.caseOpen?'Close panel':'Open panel'}</button></div><div class="actions"><button onclick="act('cables')">Connect cables</button><button onclick="act('peripherals')">Connect peripherals</button></div><div class="actions"><button class="primary" onclick="act('boot')">Power on PC</button></div></div></div>`,
+ shop:()=>`<h2 class="section-title">Component shop</h2><p class="sub">${state.infiniteMoney?'Sandbox mode: everything is free. Buy anything to experiment.':'Prices are simulated shop prices. Purchases are deducted from your workshop balance.'}</p><input id="searchParts" placeholder="Search hardware…" style="width:100%;margin:8px 0" oninput="filterParts(this.value)"><div id="shopList" class="stack">${shopCards('')}</div>`,
+ checks:()=>`<h2 class="section-title">Build diagnostics</h2><p class="sub">Checks use the current assembly state and component specifications.</p><div class="actions"><button class="primary" onclick="runDiag()">Run POST / compatibility checks</button></div><div id="diagResult">${diagnosticHTML()}</div><h3 style="margin-top:18px">Event log</h3><div class="stack">${state.log.slice(0,8).map(x=>`<div class="card"><span class="${x.kind==='bad'?'bad':x.kind==='ok'?'ok':'sub'}">${x.time} · ${x.msg}</span></div>`).join('')||'<p class="sub">No events yet.</p>'}</div>`,
+ bios:()=>`<h2 class="section-title">UEFI firmware & boot manager</h2><div class="card"><div class="row"><h3>Power-on self-test (POST)</h3><span class="tag">UEFI 2.9 · BenchLab firmware</span></div><p>Status: <b class="${state.booted?'ok':'warn'}">${state.booted?'POST PASSED':'WAITING FOR POWER-ON'}</b></p><p>CPU: ${state.installed.cpu?(installedPart('cpu')?.name||'CPU detected'):'Not detected'}</p><p>Memory: ${hasType('ram')?`${installedPart('ram')?.capacity}GB ${installedPart('ram')?.ram} · ${Math.round((installedPart('ram')?.speed||0)*(state.xmpEnabled?1:0.92))} MT/s`:'Not detected'}</p><p>Graphics: ${hasType('gpu')?`${installedPart('gpu')?.name} · ${installedPart('gpu')?.vram}GB VRAM`:'Integrated / basic display adapter'}</p><p>Storage: ${hasType('ssd')||hasType('storage')?`${installedStorage()?.name||'Storage detected'}`:'No boot device'}</p><p>Memory profile (EXPO/XMP): ${state.xmpEnabled?'Enabled':'Auto / default'}</p><p>Secure Boot: ${state.secureBoot?'Enabled':'Disabled'}</p><div class="actions"><button class="primary" onclick="act('boot')">Power on / run POST</button><button onclick="toggleBootMenu()">${state.bootMenuOpen?'Close boot menu':'Open one-time boot menu (F11)'}</button></div></div>${state.bootMenuOpen?`<div class="boot-screen card"><div class="boot-brand">BENCHLAB UEFI</div><div class="boot-sub">BOOT DEVICE SELECTION · ONE-TIME MENU</div><p class="sub">Select a detected boot target. The selected target is used for the next simulated startup.</p>${state.bootOrder.map((d,i)=>`<button class="boot-option ${state.bootDevice===d?'active':''}" onclick="selectBootDevice('${d.replaceAll("'","\\'")}')"><span>${i===0?'▸':' '}</span> ${d}<small>${d.includes('NVMe')?(hasType('ssd')||hasType('storage')?'DETECTED':'NOT DETECTED'):d.includes('BenchOS')?(state.osInstalled?'OS READY':'OS NOT INSTALLED'):d.includes('USB')?'VIRTUAL INSTALL MEDIA':'OPTIONAL'}</small></button>`).join('')}<div class="notice">Use ↑ / ↓ to change selection in a real firmware menu; here, click a device then choose Boot.</div><div class="actions"><button class="primary" onclick="bootSelected()">Boot selected device</button><button onclick="toggleBootMenu()">Cancel</button></div></div>`:''}<div class="card"><h3>Firmware configuration</h3><label class="row">EXPO / XMP memory profile <input type="checkbox" ${state.xmpEnabled?'checked':''} onchange="setFirmware('xmpEnabled',this.checked)"></label><p class="sub">Enable the advertised memory profile for a higher modeled RAM speed.</p><label class="row">Secure Boot <input type="checkbox" ${state.secureBoot?'checked':''} onchange="setFirmware('secureBoot',this.checked)"></label><p class="sub">Simulated firmware security setting.</p><label>First boot device<select style="width:100%;margin-top:6px" onchange="setBootDevice(this.value)">${state.bootOrder.map(d=>`<option ${state.bootDevice===d?'selected':''}>${d}</option>`).join('')}</select></label><div class="actions"><button onclick="restoreUEFI()">Load setup defaults</button></div></div><div class="card"><h3>Operating system installer</h3><p>${state.osInstalled?'BenchOS is installed on the simulated boot drive.':'Install the simulated BenchOS after POST passes and a storage device is detected.'}</p><div class="meter"><i style="width:${state.osInstalled?100:0}%"></i></div><button class="primary" onclick="installOS()" ${!state.booted||(!hasType('ssd')&&!hasType('storage'))||state.osInstalled?'disabled':''}>${state.osInstalled?'BenchOS installed':'Install simulated BenchOS'}</button>${state.osInstalled?'<div class="notice"><b>BenchOS Desktop</b><p>System ready · drivers simulated · no network access required.</p><button onclick="runDiag()">System health check</button><button class="primary" onclick="openOS()">Launch BenchOS desktop</button></div>':''}</div>`,
+ bench:()=>`<h2 class="section-title">Performance lab</h2><p class="sub">Deterministic estimates based on modeled component specifications. These are not measured benchmark results.</p><div class="card"><div class="row"><span>Estimated score</span><strong>${state.booted?score().toLocaleString():'—'}</strong></div><div class="meter"><i style="width:${state.booted?Math.min(score()/220,100):0}%"></i></div><p>Estimated CPU: ${state.installed.cpu?Math.round(part('cpu').cores*1250*(part('cpu').clock/4.5)).toLocaleString():'Not detected'}</p><p>Estimated GPU: ${hasType('gpu')?(installedPart('gpu')?.score||0).toLocaleString():state.installed.cpu?'2,600 (integrated graphics estimate)':'Not detected'}</p><p>Estimated load temperature: ${state.booted?temperature()+'°C':'—'}</p><p>Estimated peak system draw: ${state.booted?((part('cpu')?.watt||0)+(hasType('gpu')?(installedPart('gpu')?.watt||0):0)+80)+' W':'—'}</p><div class="actions"><button class="primary" onclick="runBench()" ${!state.booted?'disabled':''}>Run benchmark</button></div><div id="benchResult"></div></div><div class="card"><h3>Optimization hints</h3>${optimizationHints()}</div>`,
+ career:()=>`<h2 class="section-title">${state.mode==='repair'?'Repair desk':state.mode==='challenge'?'Challenge board':'Career desk'}</h2><div class="card"><h3>${state.careerOrder?.title||defaultOrder().title}</h3><p>${state.careerOrder?.desc||defaultOrder().desc}</p><p>Reward: <b class="ok">$${(state.careerOrder||defaultOrder()).reward}</b> · Budget cap: <b>$${(state.careerOrder||defaultOrder()).budget}</b></p><div class="notice">${(state.careerOrder||defaultOrder()).requirements.map(x=>`<div>• ${x}</div>`).join('')}</div><p>Order status: <b class="${state.orderDone?'ok':'warn'}">${state.orderDone?'COMPLETED':'IN PROGRESS'}</b></p><div class="actions"><button onclick="checkOrder()" class="primary" ${state.orderDone?'disabled':''}>Inspect & submit build</button><button onclick="newOrder()">New order</button></div></div><div class="card"><h3>Workshop ledger</h3><p>Balance: ${state.infiniteMoney?'∞ (unlimited)': '$'+state.money.toLocaleString()}</p><p>Installed parts: ${Object.keys(state.installed).length}</p><p>Build estimate: $${Object.keys(state.installed).reduce((a,id)=>a+(part(id)?.price||0),0)}</p></div>`,
+ settings:()=>`<h2 class="section-title">Settings</h2><div class="card"><label>Master volume <b id="volText">${state.settings.volume}%</b><input style="width:100%" type="range" min="0" max="100" value="${state.settings.volume}" oninput="setSetting('volume',this.value)"></label><p class="sub">Audio is currently limited to browser-generated event tones.</p></div><div class="card"><label>Camera sensitivity <b id="sensText">${state.settings.sensitivity.toFixed(1)}×</b><input style="width:100%" type="range" min=".4" max="2" step=".1" value="${state.settings.sensitivity}" oninput="setSetting('sensitivity',this.value)"></label><p class="sub">Adjust orbit response when dragging the workbench view.</p></div><div class="card"><label>Render quality<select style="width:100%;margin-top:6px" onchange="setSetting('quality',this.value)"><option ${state.settings.quality==='High'?'selected':''}>High</option><option ${state.settings.quality==='Balanced'?'selected':''}>Balanced</option><option ${state.settings.quality==='Performance'?'selected':''}>Performance</option></select></label></div><div class="actions"><button onclick="saveGame()">Save game</button><button onclick="resetBuild()" class="danger">Reset build</button><button onclick="toggleFullscreen()">Fullscreen</button></div><div class="sub" style="margin-top:10px">Saved locally in this browser. Clearing browser storage removes this save.</div>`
+};
+function shopCards(q){return catalog.filter(p=>(p.name+' '+p.type).toLowerCase().includes(q.toLowerCase())).map(p=>`<div class="card component"><div><h3>${p.name}</h3><p>${p.type.toUpperCase()} · ${p.socket||p.ram||p.interface||p.form||p.resolution||'Accessory'} ${p.capacity?'· '+(p.capacity>=1000?(p.capacity/1000)+'TB':p.capacity+'GB'):''} ${p.speed?'· '+p.speed+' MT/s':''} ${p.vram?'· '+p.vram+'GB VRAM':''} ${p.refresh?'· '+p.refresh+'Hz':''} ${p.watt?'· '+p.watt+'W':''}</p><span class="price">$${p.price}</span></div><button onclick="purchaseUI('${p.id}')" ${state.installed[p.id]?'disabled':''}>${state.installed[p.id]?'Installed':state.inventory.includes(p.id)?'Install':'Buy'}</button></div>`).join('')}
+function diagnosticHTML(){let e=validate();let compat=[];if(state.installed.cpu&&state.installed.board&&installedPart('cpu').socket!==part('board').socket)compat.push('CPU/motherboard socket mismatch.');if(hasType('ram')&&state.installed.board&&installedPart('ram').ram!==part('board').ram)compat.push('RAM generation mismatch.');let all=[...e,...compat];return `<div class="notice"><b class="${all.length?'warn':'ok'}">${all.length?all.length+' issue(s) detected':'No blocking issues detected.'}</b></div>${all.map(x=>`<div class="card"><span class="bad">! </span>${x}</div>`).join('')||'<div class="card"><span class="ok">✓ </span>Core assembly checks passed.</div>'}`}
+function nextStep(){for(const id of order){if(id==='cables'&&!state.steps.cables)return 'Connect power cables';if(id==='panel'&&state.caseOpen)return 'Close the side panel';if(id==='monitor'&&!state.installed.monitor)return 'Connect monitor and peripherals';if(id==='boot'&&!state.booted)return 'Power on and run POST';if(id==='paste'&&!state.steps.paste)return stageNames[id];if(part(id)&&!isPartInstalled(id))return stageNames[id]||id}return state.booted?'Build complete':'Ready to boot'}
+function progress(){let done=Object.keys(state.installed).filter(x=>!['monitor'].includes(x)).length+(state.steps.paste?1:0)+(state.steps.cables?1:0)+(!state.caseOpen?1:0);return Math.min(100,Math.round(done/12*100))}
+function optimizationHints(){let h=[];if(!hasType('cooler'))h.push('Install a CPU cooler before sustained loads.');if(!state.installed.fans)h.push('Add case fans to improve estimated airflow.');if(!hasType('gpu'))h.push('A discrete GPU improves graphics estimates for demanding workloads.');if(!hasType('ram'))h.push('Install memory to pass POST.');return h.map(x=>`<p>• ${x}</p>`).join('')||'<p class="ok">Core cooling and memory components are present.</p>'}
+function defaultOrder(){if(state.mode==='challenge')return {title:'Budget Builder',desc:'Build a bootable system while staying under the $650 parts budget.',reward:180,budget:650,requirements:['Boot successfully','CPU, motherboard, RAM, PSU, cooler and SSD installed','Parts cost no more than $650']};if(state.mode==='repair')return {title:'Repair ticket #104',desc:'Find missing assembly steps and return the workstation to a bootable state.',reward:220,budget:2500,requirements:['Run diagnostics','Fix all blocking POST issues','Boot the repaired PC']};return {title:'Customer Order #001',desc:'Deliver a stable everyday PC with storage and a monitor.',reward:300,budget:1200,requirements:['Boot successfully','Install an SSD and monitor','Estimated parts cost at or below $1,200']}}
+function renderTab(){let fn=tabs[state.tab]||tabs.build;$('#content').innerHTML=fn();$$('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));persist()}
+function switchTab(t){state.tab=t;renderTab()}
+let bootFlowToken=0;
+function showBootFlow(){const el=$('#bootFlow');if(el)el.classList.add('open')}
+function hideBootFlow(){const el=$('#bootFlow');if(el)el.classList.remove('open')}
+function bootFlowUpdate(lines,progress,status){const box=$('#bootFlowLines');if(box)box.innerHTML=lines.map((x,i)=>`<div class="bootflow-line ${x.startsWith('✓')?'done':i===lines.length-1?'active':''}">${escapeOS(x)}</div>`).join('');const bar=$('#bootFlowProgress');if(bar)bar.style.width=progress+'%';const st=$('#bootFlowStatus');if(st)st.textContent=status}
+window.cancelBootFlow=()=>{bootFlowToken++;hideBootFlow();state.booted=false;state.bootMenuOpen=false;state.osDesktop=false;$('#osShell').classList.remove('open');renderTab();log('Startup cancelled. Returned to the workshop.','warn')};
+window.lookAtPC=()=>{goIntoPC()};
+window.saveCurrentPC=()=>{const snapshot={version:1,savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(state))};localStorage.setItem('benchlab-pc-snapshot',JSON.stringify(snapshot));persist();renderTab();log('Current PC snapshot saved in this browser.','ok')};
+window.loadCurrentPC=()=>{const raw=localStorage.getItem('benchlab-pc-snapshot');if(!raw){log('No saved PC snapshot found.','warn');return}try{const snap=JSON.parse(raw);if(!snap.state)throw new Error('Invalid snapshot');const current=snap.state;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,current);state.osDesktop=false;$('#osShell').classList.remove('open');buildScene();persist();renderTab();log('Saved PC snapshot loaded.','ok')}catch(e){log('Could not load the saved PC snapshot.','bad')}};
+window.goIntoPC=()=>{
+ if(state.osDesktop){state.osDesktop=false;$('#osShell').classList.remove('open');state.tab='pc';renderTab();return}
+ if($('#bootFlow')?.classList.contains('open'))return;
+ const issues=validate();
+ if(issues.length){state.booted=false;state.tab='checks';renderTab();log('Automatic POST failed. Fix these issues before startup: '+issues.join(' '),'bad');return}
+ const token=++bootFlowToken;state.booted=false;state.bootMenuOpen=false;showBootFlow();
+ let lines=['Initializing UEFI firmware…'];bootFlowUpdate(lines,8,'Firmware initialization');
+ setTimeout(()=>{if(token!==bootFlowToken)return;lines=[...lines,'✓ CPU detected: '+(installedPart('cpu')?.name||'Processor'),'✓ Memory test passed: '+(installedPart('ram')?.capacity||0)+' GB RAM'];bootFlowUpdate(lines,28,'Running POST checks');},350);
+ setTimeout(()=>{if(token!==bootFlowToken)return;lines=[...lines,'✓ Graphics adapter initialized','✓ Storage device detected: '+(installedStorage()?.name||'System drive')];state.booted=true;buildScene();bootFlowUpdate(lines,52,'POST passed · Preparing boot device');},750);
+ setTimeout(()=>{if(token!==bootFlowToken)return;if(!state.osInstalled){lines=[...lines,'BenchOS not found on system drive.','Starting automatic BenchOS installation…'];bootFlowUpdate(lines,65,'Installing BenchOS');}},1050);
+ setTimeout(()=>{if(token!==bootFlowToken)return;if(!state.osInstalled){state.osInstalled=true;lines=[...lines,'✓ BenchOS installed to '+(installedStorage()?.name||'system drive')];bootFlowUpdate(lines,84,'Finishing installation');persist();}},1750);
+ setTimeout(()=>{if(token!==bootFlowToken)return;lines=[...lines,'✓ Loading BenchOS kernel simulation','✓ Starting desktop services','✓ Desktop ready'];bootFlowUpdate(lines,100,'Startup complete');persist();},2200);
+ setTimeout(()=>{if(token!==bootFlowToken)return;hideBootFlow();state.booted=true;state.bootMenuOpen=false;buildScene();persist();openOS();log(state.osInstalled?'BenchOS booted successfully. POST and automatic installation sequence complete.':'BenchOS booted successfully.','ok')},2650);
+};
+window.toggleBootMenu=()=>{state.bootMenuOpen=!state.bootMenuOpen;persist();renderTab()};window.selectBootDevice=d=>{state.bootDevice=d;persist();renderTab()};window.setBootDevice=d=>{state.bootDevice=d;persist()};window.setFirmware=(k,v)=>{state[k]=!!v;persist();renderTab();log((k==='xmpEnabled'?'Memory profile ':'Secure Boot ')+(v?'enabled.':'disabled.'))};window.restoreUEFI=()=>{state.xmpEnabled=false;state.secureBoot=true;state.bootDevice='BenchOS Boot Manager';state.bootOrder=['BenchOS Boot Manager','UEFI NVMe Drive','USB Installer','UEFI Network'];persist();renderTab();log('UEFI defaults restored.','ok')};window.bootSelected=()=>{const d=state.bootDevice;if(d.includes('BenchOS')){if(!state.osInstalled){log('Boot failed: BenchOS is not installed. Select the USB Installer to install it.','bad');return}state.bootMenuOpen=false;state.booted=true;buildScene();persist();renderTab();log('BenchOS boot manager launched successfully.','ok');openOS();return}if(d.includes('NVMe')){if(!hasType('ssd')&&!hasType('storage')){log('Boot failed: no NVMe/SATA drive detected.','bad');return}if(!state.osInstalled){log('Drive detected, but no operating system is installed. Select USB Installer.','warn');return}state.bootMenuOpen=false;state.booted=true;buildScene();persist();renderTab();log('Operating system loaded from storage.','ok');openOS();return}if(d.includes('USB')){if(!state.booted){const errs=validate();if(errs.length){log('Installer startup blocked until POST requirements are met: '+errs.join(' '),'bad');return}}state.bootMenuOpen=false;state.osInstalled=true;state.booted=true;buildScene();persist();renderTab();log('BenchOS installer ran from simulated USB media and completed installation.','ok');openOS();return}log('Network boot is simulated; no network boot server is configured.','warn')};window.act=id=>install(id);window.purchaseUI=id=>{if(state.inventory.includes(id))install(id);else purchase(id);renderTab()};window.filterParts=q=>$('#shopList').innerHTML=shopCards(q);window.runDiag=()=>{log('Diagnostics completed.','info');$('#diagResult').innerHTML=diagnosticHTML()};window.installOS=()=>{if(!state.booted||(!hasType('ssd')&&!hasType('storage')))return;state.osInstalled=true;persist();log('BenchOS installation completed.','ok');renderTab();openOS()};window.runBench=()=>{let sc=score(),temp=temperature();$('#benchResult').innerHTML=`<div class="notice"><b class="ok">Benchmark complete</b><p>Composite estimate: ${sc.toLocaleString()}</p><p>Thermal estimate under load: ${temp}°C — ${temp>90?'Cooling risk':temp>75?'Warm':'Within modeled range'}</p><p>Results are calculated from current component data and fixed formulas; they are not measured hardware performance.</p></div>`;log('Simulated benchmark completed.','ok')};window.setSetting=(k,v)=>{state.settings[k]=k==='quality'?v:Number(v);if(k==='volume')$('#volText').textContent=v+'%';if(k==='sensitivity')$('#sensText').textContent=Number(v).toFixed(1)+'×';persist()};window.saveGame=()=>{persist();log('Workshop saved locally.','ok')};window.resetBuild=()=>{if(confirm('Reset installed components and assembly steps? Purchased parts in inventory and balance will be retained.')){state.installed={};state.steps={};state.caseOpen=true;state.booted=false;state.osInstalled=false;buildScene();persist();renderTab();log('Build reset.')}};window.toggleFullscreen=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};window.checkOrder=()=>{let o=state.careerOrder||defaultOrder(),cost=Object.keys(state.installed).reduce((a,id)=>a+(part(id)?.price||0),0),errors=validate();if(!state.booted||errors.length){log('Order rejected: the PC must pass POST and all core checks.','bad');return}if(cost>o.budget){log(`Order rejected: build estimate $${cost} exceeds budget $${o.budget}.`,'bad');return}if(!state.installed.ssd||!state.installed.monitor){log('Order rejected: customer requires storage and a monitor.','bad');return}state.orderDone=true;state.money+=o.reward;persist();renderTab();log('Customer order completed. Payment received: $'+o.reward+'.','ok')};window.newOrder=()=>{state.careerOrder=null;state.orderDone=false;renderTab();log('Current order refreshed.')}
+function startMode(mode){state.osDesktop=false;$('#osShell').classList.remove('open');state.osOpenApps=[];state.mode=mode;state.infiniteMoney=mode==='sandbox';if(state.infiniteMoney)state.money=999999999;$('#modal').classList.add('hidden');if(!state.installed.case){if(!state.inventory.includes('case'))state.inventory.push('case');}if(mode==='repair'){state.installed={case:true,board:true,cpu:true};state.steps={};state.caseOpen=true;state.booted=false;state.inventory=['ram','cooler','paste','ssd','psu','fans','gpu','monitor'];buildScene()}if(mode==='challenge'){state.money=Math.min(state.money,650);state.inventory=['case'];state.installed={};state.steps={};state.caseOpen=true;state.booted=false;buildScene()}if(mode==='career'&&!state.careerOrder)state.careerOrder=defaultOrder();if(mode==='sandbox'){state.inventory=[...new Set([...state.inventory,...catalog.map(p=>p.id)])];state.caseOpen=true;state.booted=false;state.osInstalled=false;buildScene()}persist();switchTab(['free','sandbox'].includes(mode)?'build':'career');log('Workshop ready. Choose a part from the shop or assembly list.','ok')}
+
+const osAppInfo={files:['File Manager','files'],browser:['Web Browser','browser'],settings:['System Settings','settings'],monitor:['System Monitor','monitor'],terminal:['Terminal','terminal'],notes:['Notepad','notes'],calculator:['Calculator','calculator'],about:['About BenchOS','about'],paint:['Paint Studio','paint'],games:['Games','games'],music:['Media Player','music']};
+function osIconSVG(name){const paths={files:'<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H10l2 2h7.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M3 9h18"/>',browser:'<circle cx="12" cy="12" r="8.5"/><path d="M3.8 9h16.4M8 4.2c2.7 3.1 2.7 12.5 0 15.6M16 4.2c-2.7 3.1-2.7 12.5 0 15.6"/>',settings:'<circle cx="12" cy="12" r="3"/><path d="M19 13.5l1.2 1-1.5 2.6-1.5-.5a7 7 0 0 1-1.8 1l-.3 1.6h-3l-.3-1.6a7 7 0 0 1-1.8-1l-1.5.5L7 14.5l1.2-1a6 6 0 0 1 0-2.1L7 10.5l1.5-2.6 1.5.5a7 7 0 0 1 1.8-1l.3-1.6h3l.3 1.6a7 7 0 0 1 1.8 1l1.5-.5 1.5 2.6-1.2 1a6 6 0 0 1 0 2z"/>',monitor:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M6.5 13l3-3 2.5 2 4-4 1.5 1.5"/>',terminal:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/>',notes:'<path d="M6 3.5h9l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14.5 3.5V8H19M8 12h8M8 16h8"/>',calculator:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2m4 0h2M8 15h2m4 0h2M8 18h2m4 0h2"/>',about:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7h.01"/>',paint:'<path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4c-.9-.9-.2-2.6 1.1-2.6H18a3 3 0 0 0 3-3C21 7 17 3 12 3z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="15.5" cy="8.5" r="1"/>',games:'<path d="M7 8h10a4 4 0 0 1 3.8 5l-1 3.2a2.5 2.5 0 0 1-4.1 1.1L14 15H10l-1.7 2.3a2.5 2.5 0 0 1-4.1-1.1l-1-3.2A4 4 0 0 1 7 8z"/><path d="M7 10.5v4M5 12.5h4M16.5 11.5h.01M18.5 13.5h.01"/>',music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'};return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${paths[name]||paths.about}</svg>`;}
+function openOS(){if(!state.osInstalled){log('BenchOS is not installed on a detected drive.','warn');return}state.osDesktop=true;state.booted=true;state.bootMenuOpen=false;$('#osShell').classList.add('open');$('#osStartMenu').classList.add('hidden');buildScene();renderOS();persist()}
+function renderOS(){if(!state.osDesktop)return;const ram=installedPart('ram'),gpu=installedPart('gpu'),cpu=installedPart('cpu'),storage=installedStorage();$('#osTopHardware').textContent=`${cpu?.name||'CPU'} · ${ram?.capacity||0} GB RAM`;$('#osClock').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});$('#osDate').textContent=new Date().toLocaleDateString([], {month:'short',day:'numeric'});$('#osTaskApps').innerHTML=(state.osOpenApps||[]).map(a=>`<button onclick="focusOSApp('${a}')"><span class="os-task-icon">${osIconSVG(osAppInfo[a]?.[1]||'about')}</span><span>${osAppInfo[a]?.[0]||a}</span></button>`).join('');$('#osWindows').innerHTML=(state.osOpenApps||[]).map(a=>osWindowHTML(a,{ram,gpu,cpu,storage})).join('');$('#osWindows').querySelectorAll('[data-os-close]').forEach(b=>b.onclick=()=>closeOSApp(b.dataset.osClose));$('#osWindows').querySelectorAll('[data-os-min]').forEach(b=>b.onclick=()=>minimizeOSApp(b.dataset.osMin));$('#osWindows').querySelectorAll('[data-os-max]').forEach(b=>b.onclick=()=>{const w=document.querySelector(`[data-os-window="${b.dataset.osMax}"]`);w?.classList.toggle('maximized')});$('#osWindows').querySelectorAll('[data-os-save-notes]').forEach(b=>b.onclick=()=>{state.osNotes=$('#osNoteText').value;localStorage.setItem('benchos-notes',state.osNotes);persist();osToast('Notes saved locally.')});$('#osWindows').querySelectorAll('[data-os-terminal]').forEach(b=>b.onclick=()=>runOSTerminal());$('#osWindows').querySelectorAll('[data-os-calc]').forEach(b=>b.onclick=()=>runOSCalc());$('#osWindows').querySelectorAll('[data-os-url]').forEach(b=>b.onclick=()=>{const v=$('#osUrl').value.trim();if(v){const url=/^https?:\/\//i.test(v)?v:'https://www.google.com/search?q='+encodeURIComponent(v);window.open(url,'_blank','noopener,noreferrer')}});$('#osWindows').querySelectorAll('[data-os-toggle]').forEach(el=>el.onchange=()=>{if(el.dataset.osToggle==='theme'){document.querySelector('#osShell .os-wallpaper').style.filter=el.checked?'hue-rotate(35deg)':'none';state.settings.osAccent=el.checked?'violet':'blue'}if(el.dataset.osToggle==='sound'){state.settings.volume=el.checked?50:0}persist()});$('#osWindows').querySelectorAll('[data-os-restart]').forEach(b=>b.onclick=osRestart);$('#osWindows').querySelectorAll('[data-os-import]').forEach(el=>el.onchange=()=>importVirtualFile(el.files?.[0]));$('#osWindows').querySelectorAll('[data-file-index]').forEach(b=>b.onclick=()=>openVirtualFile(Number(b.dataset.fileIndex)));$('#osWindows').querySelectorAll('[data-file-export]').forEach(b=>b.onclick=()=>exportVirtualFile(Number(b.dataset.fileExport)));$('#osWindows').querySelectorAll('[data-file-delete]').forEach(b=>b.onclick=()=>deleteVirtualFile(Number(b.dataset.fileDelete)));$('#osWindows').querySelectorAll('[data-paint-clear]').forEach(b=>b.onclick=()=>{const c=$('#paintCanvas'),ctx=c?.getContext('2d');if(ctx){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height)}});$('#osWindows').querySelectorAll('[data-paint-save]').forEach(b=>b.onclick=()=>{const c=$('#paintCanvas');if(c){const a=document.createElement('a');a.download='BenchOS-paint.png';a.href=c.toDataURL('image/png');a.click()}});$('#osWindows').querySelectorAll('[data-game-start]').forEach(b=>b.onclick=()=>startClickGame());$('#osWindows').querySelectorAll('[data-game-click]').forEach(b=>b.onclick=()=>{if(window.__benchClickGame?.running){window.__benchClickGame.score++;const el=$('#clickScore');if(el)el.textContent='Clicks: '+window.__benchClickGame.score}});$('#osWindows').querySelectorAll('[data-guess]').forEach(b=>b.onclick=()=>{const n=Number($('#guessInput')?.value),g=window.__benchGuess??(window.__benchGuess=Math.floor(Math.random()*20)+1),el=$('#guessResult');if(!el)return;el.textContent=!n||n<1||n>20?'Enter a number from 1 to 20.':n===g?`Correct! ${g} was the number. New number generated.`:n<g?'Too low — try again.':'Too high — try again.';if(n===g)window.__benchGuess=Math.floor(Math.random()*20)+1});$('#osWindows').querySelectorAll('#paintCanvas').forEach(c=>initPaintCanvas(c));$('#osWindows').querySelectorAll('#mediaFile').forEach(inp=>inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;const url=URL.createObjectURL(f);if(f.type.startsWith('video/')){$('#videoPlayer').src=url;$('#videoPlayer').style.display='block';$('#mediaPlayer').style.display='none'}else{$('#mediaPlayer').src=url;$('#mediaPlayer').style.display='block';$('#videoPlayer').style.display='none'}});}
+function osWindowHTML(a,d){let body='';switch(a){case'files':{const vf=getVirtualFiles();body=`<h2>File Manager</h2><p>Computer / C: / Documents · Files you create here are saved in this browser.</p><div class="actions"><button class="primary" onclick="createVirtualFile()">＋ New text file</button><button onclick="document.getElementById('osImportFile').click()">Import a file</button><input id="osImportFile" type="file" style="display:none" data-os-import></div><div class="os-tile"><b>▣ System (C:)</b><small>${d.storage?.name||'No storage installed'} · ${d.storage?(d.storage.capacity>=1000?d.storage.capacity/1000+' TB':d.storage.capacity+' GB')+' simulated capacity':'Install an SSD or HDD in the workshop'}</small></div><div id="osVirtualFiles">${vf.length?vf.map((f,i)=>`<div class="os-file"><span>▤</span><button class="file-open" data-file-index="${i}">${escapeOS(f.name)}</button><span>${f.content.length} chars</span><button data-file-export="${i}">Export</button><button data-file-delete="${i}">Delete</button></div>`).join(''):'<p>No documents yet. Create a text file or import one from your computer.</p>'}</div><div class="os-notice">Imported text files can be edited in Notepad and exported again. Other file types can be stored and downloaded, but BenchOS cannot run Windows programs or install real applications.</div>`;break;}
+case'browser':body=`<h2>Bench Browser</h2><p>Open real websites using your browser. Some sites block embedding, so websites open in a normal browser tab.</p><form onsubmit="event.preventDefault();document.getElementById('osOpenUrlBtn').click()" style="display:flex;gap:8px"><input id="osUrl" placeholder="Website or search terms" value="https://www.wikipedia.org"><button id="osOpenUrlBtn" type="button" data-os-url>Open website</button></form><div class="os-appgrid"><button onclick="document.getElementById('osUrl').value='https://www.wikipedia.org'">Wikipedia</button><button onclick="document.getElementById('osUrl').value='https://www.google.com'">Google</button><button onclick="document.getElementById('osUrl').value='https://www.youtube.com'">YouTube</button><button onclick="document.getElementById('osUrl').value='https://itch.io'">itch.io games</button></div><div class="os-notice">BenchOS uses your existing internet connection. It cannot bypass website restrictions or browser security.</div>`;break;
+case'settings':body=`<h2>System Settings</h2><div class="os-appgrid"><div class="os-tile"><b>Personalization</b><p>Change the desktop accent treatment.</p><label><input type="checkbox" data-os-toggle="theme" ${state.settings.osAccent==='violet'?'checked':''}> Violet accent</label></div><div class="os-tile"><b>Sound</b><p>Simulation sound effects</p><label><input type="checkbox" data-os-toggle="sound" ${state.settings.volume?'checked':''}> Enable sounds</label></div><div class="os-tile"><b>Display</b><p>Recommended: ${d.gpu?'GPU acceleration enabled':'basic graphics mode'}.</p><small>Resolution is represented by your browser window.</small></div><div class="os-tile"><b>Updates</b><p>BenchOS is up to date.</p><small>Build 1.0.0 · Local simulation</small></div></div><div class="os-notice">Hardware changes are managed in the BenchLab workshop. Shut down before changing components for a more realistic workflow.</div>`;break;
+case'monitor':let cpuUse=state.booted?Math.min(92,18+(d.cpu?.cores||2)*4+(d.gpu?12:0)):0;body=`<h2>System Monitor</h2><div class="os-appgrid"><div class="os-tile"><b>CPU</b><div class="meter"><i style="width:${cpuUse}%"></i></div><small>${d.cpu?.name||'Not detected'} · ${cpuUse}% simulated use</small></div><div class="os-tile"><b>Memory</b><div class="meter"><i style="width:${Math.min(100,(d.ram?.capacity||0)?Math.max(8,Math.round(1000/(d.ram.capacity))):0)}%"></i></div><small>${d.ram?.capacity||0} GB installed · ${d.ram?.speed||0} MT/s</small></div><div class="os-tile"><b>Graphics</b><div class="meter"><i style="width:${d.gpu?72:18}%"></i></div><small>${d.gpu?.name||'Integrated graphics'} · ${d.gpu?.vram||0} GB VRAM</small></div><div class="os-tile"><b>Storage</b><div class="meter"><i style="width:${d.storage?22:0}%"></i></div><small>${d.storage?.name||'No drive detected'}</small></div></div><p>Metrics are simulated from the installed component specifications; they are not readings from your real computer.</p><button onclick="openOSApp('about')">View system information</button>`;break;
+case'terminal':body=`<h2>Terminal</h2><div id="osTermOut" class="os-terminal">BenchOS Shell 1.0\nType help to list commands.\nbench@benchlab:~$ </div><form onsubmit="event.preventDefault();document.getElementById('osTerminalRun').click()" style="display:flex;gap:8px;margin-top:9px"><input id="osTermInput" placeholder="help, neofetch, clear, uptime, memory, storage"><button id="osTerminalRun" type="button" data-os-terminal>Run</button></form><p>Commands are local simulation commands, not a real operating-system shell.</p>`;break;
+case'notes':body=`<h2>Notepad</h2><p>Notes save to this browser's local storage.</p><textarea id="osNoteText" placeholder="Write something…">${escapeOS(state.osNotes||localStorage.getItem('benchos-notes')||'')}</textarea><div class="actions"><button class="primary" data-os-save-notes>Save notes</button><button onclick="document.getElementById('osNoteText').value=''">Clear editor</button></div>`;break;
+case'calculator':body=`<h2>Calculator</h2><input id="osCalcInput" placeholder="Example: (125 + 75) * 1.2"><div class="actions"><button class="primary" data-os-calc>Calculate</button><button onclick="document.getElementById('osCalcInput').value=''">Clear</button></div><div class="os-notice" id="osCalcResult">Enter a basic arithmetic expression.</div><p>Supports numbers, parentheses, + − × ÷, decimals and percentages via division by 100.</p>`;break;
+
+case'paint':body=`<h2>Paint Studio</h2><p>Draw with your mouse or finger. Save your drawing as a PNG image.</p><div class="actions"><label>Brush color <input id="paintColor" type="color" value="#36c9d8" style="width:54px;padding:3px"></label><label>Size <input id="paintSize" type="range" min="1" max="28" value="5" style="width:110px"></label><button data-paint-clear>Clear</button><button class="primary" data-paint-save>Save PNG</button></div><canvas id="paintCanvas" width="900" height="440" style="width:100%;height:auto;background:#fff;border-radius:8px;touch-action:none;cursor:crosshair"></canvas>`;break;
+case'games':body=`<h2>Games</h2><p>Small games that run inside BenchOS.</p><div class="os-appgrid"><div class="os-tile"><b>Click test</b><p>Click as many times as you can in 10 seconds.</p><div id="clickScore" class="os-notice">Ready when you are.</div><button class="primary" data-game-start>Start 10-second test</button><button data-game-click disabled>CLICK!</button></div><div class="os-tile"><b>Number guess</b><p>Guess a number from 1 to 20.</p><input id="guessInput" type="number" min="1" max="20" placeholder="Your guess"><button data-guess>Guess</button><div id="guessResult" class="os-notice">I'm thinking of a number.</div></div></div>`;break;
+case'music':body=`<h2>Media Player</h2><p>Play audio files you choose from your own device.</p><input id="mediaFile" type="file" accept="audio/*,video/*"><audio id="mediaPlayer" controls style="width:100%;margin-top:12px"></audio><video id="videoPlayer" controls style="width:100%;max-height:260px;display:none;margin-top:10px"></video><p>Your selected media stays in this browser session; it is not uploaded.</p>`;break;
+case'about':body=`<h2>About BenchOS</h2><div class="os-tile"><b>BenchOS 1.0</b><small>BenchLab simulated operating system</small><p>Kernel: BenchKernel simulation</p><p>CPU: ${d.cpu?.name||'Not detected'}</p><p>Installed RAM: ${d.ram?.capacity||0} GB</p><p>Graphics: ${d.gpu?.name||'Integrated graphics'}</p><p>Storage: ${d.storage?.name||'Not detected'}</p><p>Firmware: BenchLab UEFI</p></div><div class="os-notice">This is a functional browser-based OS simulation, not a bootable ISO or a replacement for Windows/Linux.</div><button data-os-restart>Restart simulated PC</button>`;break;}
+return `<section class="os-window" data-os-window="${a}" style="z-index:${20+(state.osOpenApps||[]).indexOf(a)}"><div class="os-titlebar" onpointerdown="dragOSWindow(event,'${a}')"><span class="os-title-icon">${osIconSVG(osAppInfo[a]?.[1]||'about')}</span><strong>${osAppInfo[a]?.[0]||a}</strong><div class="os-window-actions"><button data-os-min="${a}" title="Minimize">−</button><button data-os-max="${a}" title="Maximize">□</button><button class="close" data-os-close="${a}" title="Close">×</button></div></div><div class="os-appbody">${body}</div></section>`}
+function getVirtualFiles(){try{return JSON.parse(localStorage.getItem('benchos-files')||'[]')}catch{return []}}
+function setVirtualFiles(files){localStorage.setItem('benchos-files',JSON.stringify(files));persist()}
+function createVirtualFile(){const name=prompt('Name your text file','New document.txt');if(!name)return;const files=getVirtualFiles();files.push({name:name.endsWith('.txt')?name:name+'.txt',content:''});setVirtualFiles(files);state.osOpenApps=state.osOpenApps.filter(a=>a!=='files');state.osOpenApps.push('files');renderOS();osToast('Text file created.')}
+function importVirtualFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{const files=getVirtualFiles();files.push({name:file.name,content:String(reader.result||''),type:file.type||'text/plain',binary:!file.type.startsWith('text/')&&!file.type.includes('json')});setVirtualFiles(files);renderOS();osToast('File imported into simulated C: drive.')} ;if(file.type.startsWith('text/')||file.type.includes('json')||/\.(txt|md|csv|html|css|js|json|xml)$/i.test(file.name))reader.readAsText(file);else{reader.onload=()=>{const files=getVirtualFiles();files.push({name:file.name,content:'Imported file: '+file.name+'\nOriginal size: '+file.size+' bytes\nThis simulator stores a metadata note for this non-text file. Use your browser to keep the original file.'});setVirtualFiles(files);renderOS();osToast('File details imported.')}};if(file.type.startsWith('text/')||file.type.includes('json')||/\.(txt|md|csv|html|css|js|json|xml)$/i.test(file.name))reader.readAsText(file);else reader.readAsArrayBuffer(file)}
+function openVirtualFile(i){const f=getVirtualFiles()[i];if(!f)return;if(f.binary){osToast('This file type cannot run inside BenchOS. You can export its stored details.');return}state.osNotes=f.content;state.osOpenApps=state.osOpenApps.filter(a=>a!=='notes');state.osOpenApps.push('notes');renderOS()}
+function exportVirtualFile(i){const f=getVirtualFiles()[i];if(!f)return;const blob=new Blob([f.content],{type:f.type||'text/plain'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=f.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function deleteVirtualFile(i){if(!confirm('Delete this file from the simulated C: drive?'))return;const f=getVirtualFiles();f.splice(i,1);setVirtualFiles(f);renderOS()}
+function initPaintCanvas(c){const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);let down=false;const pos=e=>{const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height}};c.onpointerdown=e=>{down=true;c.setPointerCapture?.(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)};c.onpointermove=e=>{if(!down)return;const p=pos(e);ctx.strokeStyle=$('#paintColor')?.value||'#111';ctx.lineWidth=Number($('#paintSize')?.value||5);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineTo(p.x,p.y);ctx.stroke()};c.onpointerup=c.onpointercancel=()=>down=false}
+function startClickGame(){window.__benchClickGame={running:true,score:0};const s=$('#clickScore'),b=$('[data-game-click]');if(s)s.textContent='Go! Click as fast as you can.';if(b)b.disabled=false;setTimeout(()=>{if(window.__benchClickGame){window.__benchClickGame.running=false;if(s)s.textContent='Time! Score: '+window.__benchClickGame.score+' clicks';if(b)b.disabled=true}},10000)}
+function escapeOS(v){return String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
+function openOSApp(a){if(!state.osDesktop){openOS();if(!state.osDesktop)return}state.osStartOpen=false;$('#osStartMenu').classList.add('hidden');state.osOpenApps=state.osOpenApps||[];state.osOpenApps=state.osOpenApps.filter(x=>x!==a);state.osOpenApps.push(a);renderOS()}
+function closeOSApp(a){state.osOpenApps=(state.osOpenApps||[]).filter(x=>x!==a);renderOS()}
+function minimizeOSApp(a){const w=document.querySelector(`[data-os-window="${a}"]`);if(w)w.style.display='none';}
+function focusOSApp(a){const w=document.querySelector(`[data-os-window="${a}"]`);if(w){w.style.display='flex';w.style.zIndex=99}}
+function toggleOSStart(){const m=$('#osStartMenu');m.classList.toggle('hidden')}
+function osBackToWorkshop(){state.osDesktop=false;$('#osShell').classList.remove('open');state.tab='build';orbitAzimuth=.62;orbitPolar=1.12;orbitRadius=8.2;cameraTarget.set(0,1.35,0);updateCamera();renderTab();persist();log('Exited BenchOS. Back at the PC in the workshop.','info')}
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#bootFlow')?.classList.contains('open')){e.preventDefault();e.stopPropagation();cancelBootFlow();return}if(e.key==='Escape'&&state.osDesktop){e.preventDefault();e.stopPropagation();osBackToWorkshop()}},true);
+function osShutdown(){state.osDesktop=false;state.booted=false;state.bootMenuOpen=false;$('#osShell').classList.remove('open');buildScene();persist();renderTab();log('BenchOS shut down. The PC is powered off.','warn')}
+function osRestart(){state.osDesktop=false;$('#osShell').classList.remove('open');state.booted=false;state.bootMenuOpen=false;buildScene();persist();log('Restarting simulated PC…','info');setTimeout(()=>{if(validate().length){state.tab='bios';renderTab();log('Restart stopped: POST requirements are not satisfied.','bad')}else{state.booted=true;state.bootMenuOpen=true;state.tab='bios';renderTab();buildScene();log('Restart complete. UEFI boot menu is ready.','ok')}},450)}
+function osToast(msg){const w=$('#osWindows');let t=document.createElement('div');t.className='os-notice';t.textContent=msg;t.style.cssText='position:absolute;bottom:64px;right:18px;z-index:120';$('#osShell').appendChild(t);setTimeout(()=>t.remove(),1800)}
+function runOSTerminal(){const input=$('#osTermInput'),out=$('#osTermOut');if(!input||!out)return;const cmd=input.value.trim().toLowerCase();let result='';const cpu=installedPart('cpu'),ram=installedPart('ram'),gpu=installedPart('gpu'),st=installedStorage();switch(cmd){case'help':result='help       list commands\nneofetch   show hardware summary\nuptime     show simulated uptime\nmemory     show installed RAM\nstorage    show installed drives\nclear      clear terminal';break;case'neofetch':result=`BenchOS 1.0\nCPU: ${cpu?.name||'None'}\nRAM: ${ram?.capacity||0} GB\nGPU: ${gpu?.name||'Integrated'}\nDisk: ${st?.name||'None'}\nShell: BenchShell`;break;case'memory':result=`Installed memory: ${ram?.capacity||0} GB ${ram?.ram||''} at ${ram?.speed||0} MT/s`;break;case'storage':result=st?`${st.name}\nInterface: ${st.interface||'Simulated'}\nCapacity: ${st.capacity>=1000?st.capacity/1000+' TB':st.capacity+' GB'}`:'No storage detected';break;case'uptime':result='Session active · simulated runtime 00:12:48';break;case'clear':out.textContent='BenchOS Shell 1.0\n';input.value='';return;case'':return;default:result=`Command not found: ${cmd}\nType help for available commands.`}out.textContent+=`${cmd}\n${result}\nbench@benchlab:~$ `;input.value='';out.scrollTop=out.scrollHeight}
+function runOSCalc(){const input=$('#osCalcInput'),result=$('#osCalcResult');if(!input||!result)return;const exp=input.value.trim();if(!/^[0-9+\-*/().%\s]+$/.test(exp)){result.textContent='Only basic arithmetic characters are allowed.';return}try{const normalized=exp.replace(/(\d+(?:\.\d+)?)%/g,'($1/100)');const n=Function('"use strict";return ('+normalized+')')();result.textContent=Number.isFinite(n)?String(n):'Invalid calculation'}catch{result.textContent='Invalid calculation'}}
+function dragOSWindow(e,a){if(e.target.closest('button'))return;const w=document.querySelector(`[data-os-window="${a}"]`);if(!w||w.classList.contains('maximized'))return;const r=w.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,ox=r.left,oy=r.top;const move=ev=>{w.style.left=Math.max(0,Math.min(innerWidth-r.width,ox+ev.clientX-sx))+'px';w.style.top=Math.max(32,Math.min(innerHeight-70,oy+ev.clientY-sy))+'px';w.style.transform='none'};const end=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',end,{once:true})}
+window.openOS=openOS;window.openOSApp=openOSApp;window.closeOSApp=closeOSApp;window.minimizeOSApp=minimizeOSApp;window.focusOSApp=focusOSApp;window.toggleOSStart=toggleOSStart;window.osBackToWorkshop=osBackToWorkshop;window.osShutdown=osShutdown;window.osRestart=osRestart;window.dragOSWindow=dragOSWindow;
+$$('[data-mode]').forEach(b=>b.addEventListener('click',()=>startMode(b.dataset.mode)));$('#startFree').onclick=()=>startMode('free');$('#continueBtn').onclick=()=>{if(saved){$('#osShell').classList.remove('open');state.osDesktop=false;$('#modal').classList.add('hidden');state.infiniteMoney=!!state.infiniteMoney;buildScene();persist();switchTab('build');log('Saved workshop loaded.','ok')}else startMode('free')};$('#menuBtn').onclick=()=>$('#modal').classList.remove('hidden');$$('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+function playTone(freq=600,dur=.055){if(!state.settings.volume)return;try{const ac=new AudioContext(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=freq;g.gain.value=(state.settings.volume/100)*.035;o.connect(g);g.connect(ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);o.stop(ac.currentTime+dur);o.onended=()=>ac.close()}catch{}}
+const canvas=$('#scene');
+const cameraTarget = new THREE.Vector3(0, 1.35, 0);
+let orbitAzimuth = 0.62, orbitPolar = 1.12, orbitRadius = 8.2;
+let pointerStart = null, didDrag = false;
+function updateCamera(){
+  orbitPolar = Math.max(0.28, Math.min(1.48, orbitPolar));
+  orbitRadius = Math.max(4.3, Math.min(13, orbitRadius));
+  camera.position.set(
+    cameraTarget.x + orbitRadius * Math.sin(orbitPolar) * Math.sin(orbitAzimuth),
+    cameraTarget.y + orbitRadius * Math.cos(orbitPolar),
+    cameraTarget.z + orbitRadius * Math.sin(orbitPolar) * Math.cos(orbitAzimuth)
+  );
+  camera.lookAt(cameraTarget);
+}
+canvas.style.touchAction = 'none';
+canvas.addEventListener('pointerdown', e => {
+  drag = true;
+  didDrag = false;
+  pointerStart = {x:e.clientX, y:e.clientY};
+  prev = {x:e.clientX, y:e.clientY};
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+  if (pointerStart && Math.hypot(e.clientX-pointerStart.x, e.clientY-pointerStart.y) > 4) didDrag = true;
+  if (didDrag) {
+    orbitAzimuth -= dx * .008 * state.settings.sensitivity;
+    orbitPolar += dy * .006 * state.settings.sensitivity;
+    updateCamera();
+  }
+  prev = {x:e.clientX, y:e.clientY};
+});
+function endOrbit(e){
+  if (!drag) return;
+  drag = false;
+  try { if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId); } catch {}
+  if (!didDrag && pointerStart) {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((pointerStart.x - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((pointerStart.y - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(pc.children, true);
+    if (hits.length) {
+      let n = hits[0].object.name || 'component';
+      $('#selectionPill').textContent = n.replaceAll('-', ' ').toUpperCase();
+      $('#viewHint').textContent = 'SELECTED: ' + n.toUpperCase();
+      playTone(740);
+    }
+  }
+  pointerStart = null;
+}
+canvas.addEventListener('pointerup', endOrbit);
+canvas.addEventListener('pointercancel', endOrbit);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  orbitRadius = Math.max(4.3, Math.min(13, orbitRadius + e.deltaY * .008));
+  updateCamera();
+}, {passive:false});
+function resize(){
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height;
+  camera.updateProjectionMatrix();
+  updateCamera();
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+updateCamera();
+function animate(){requestAnimationFrame(animate);renderer.render(scene,camera)}animate();
+const oldLog=window.log;const origInstall=install;install=function(id){origInstall(id);playTone(520,.04);renderTab()};renderTab();persist();
+</script>
+</body></html>
